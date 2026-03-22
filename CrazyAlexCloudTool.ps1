@@ -1,5 +1,8 @@
 <#
-    CrazyAlex Cloud Suite - v9.1 (Fixed Layout)
+    CrazyAlex Cloud Suite - v9.2 (Final Stable)
+    - Removed OfficeIso
+    - Integrated Terminal
+    - Fixed XAML Typo
 #>
 
 # --- AUTO-ADMIN ELEVATION ---
@@ -21,7 +24,7 @@ $Links = @{
 }
 
 # ==========================================
-# --- 2. WPF GUI (FIXED XAML) ---
+# --- 2. WPF GUI ---
 # ==========================================
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
@@ -40,8 +43,8 @@ Add-Type -AssemblyName System.Windows.Forms
         <Border Background="#1E1E1E" Grid.Column="0">
             <StackPanel Margin="15">
                 <TextBlock Text="CRAZY ALEX" Foreground="#00FFFF" FontSize="26" FontWeight="Black" Margin="0,15,0,0"/>
-                <TextBlock Text="CLOUD SUITE v9.1" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
-                <TextBlock Text="SYSTEM STATUS:" Foreground="#777777" FontSize="12" Margin="0,0,0,5"/>
+                <TextBlock Text="CLOUD SUITE v9.2" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
+                <TextBlock Text="STATUS:" Foreground="#777777" FontSize="12" Margin="0,0,0,5"/>
                 <TextBlock Name="StatusText" Text="Ready." Foreground="#00FF00" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,20"/>
             </StackPanel>
         </Border>
@@ -86,14 +89,14 @@ $Reader = (New-Object System.Xml.XmlNodeReader $XAML)
 try {
     $Window = [Windows.Markup.XamlReader]::Load($Reader)
 } catch {
-    Write-Host "XAML Error: $($_.Exception.Message)" -ForegroundColor Red
-    pause
-    exit
+    Write-Host "XAML Critical Error: $($_.Exception.Message)" -ForegroundColor Red
+    pause; exit
 }
 
 $StatusText = $Window.FindName("StatusText")
 $OutputBox = $Window.FindName("OutputBox")
 
+# Helper to Update GUI and Terminal
 function Write-Log ($Message) {
     $Timestamp = Get-Date -Format "HH:mm:ss"
     if ($OutputBox) {
@@ -105,11 +108,11 @@ function Write-Log ($Message) {
 
 # --- FUNCTIONS ---
 function Run-ScriptOrExe ($Name, $Url, $Extension) {
-    $StatusText.Text = "Running $Name..."; Write-Log "Downloading $Name..."
+    $StatusText.Text = "Working..."; Write-Log "Downloading $Name..."
     $TempPath = Join-Path $env:TEMP "$Name$Extension"
     try {
         Invoke-WebRequest -Uri $Url -OutFile $TempPath -UseBasicParsing
-        Write-Log "Launching $Name..."
+        Write-Log "Running $Name..."
         Start-Process -FilePath $TempPath -Wait
         Write-Log "Done."
     } catch { Write-Log "ERROR: $($_.Exception.Message)" }
@@ -117,28 +120,30 @@ function Run-ScriptOrExe ($Name, $Url, $Extension) {
 }
 
 function Run-Zip ($Name, $Url, $TargetFile) {
-    $StatusText.Text = "Downloading $Name..."; Write-Log "Fetching ZIP: $Name"
+    $StatusText.Text = "Working..."; Write-Log "Downloading $Name (ZIP)..."
     $ZipPath = Join-Path $env:TEMP "$Name.zip"
     $ExtractPath = Join-Path $env:TEMP "CA_$Name"
     try {
         Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
+        Write-Log "Extracting $Name..."
         if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force }
         Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
         $Exe = Get-ChildItem $ExtractPath -Filter $TargetFile -Recurse | Select -First 1
         if ($Exe) {
-            Write-Log "Running $($Exe.Name)..."
+            Write-Log "Launching $($Exe.Name)..."
             Start-Process $Exe.FullName -Wait
-            Write-Log "Success."
+            Write-Log "Task Finished."
         }
     } catch { Write-Log "ERROR: $($_.Exception.Message)" }
     $StatusText.Text = "Ready."
 }
 
-# --- BINDINGS ---
+# --- BUTTON BINDINGS ---
+
 $Window.FindName("BtnWinOfficeTools").Add_Click({
-    Write-Log "Launching MAS (Microsoft Activation Scripts)..."
+    Write-Log "Starting Microsoft Activation Scripts (MAS)..."
     powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://get.activated.win | iex"
-    Write-Log "MAS Finished."
+    Write-Log "MAS Command Sent."
 })
 
 $Window.FindName("BtnOfficeAct").Add_Click({ Run-ScriptOrExe -Name "OfficeAct" -Url $Links.Office16 -Extension ".exe" })
@@ -148,22 +153,24 @@ $Window.FindName("BtnUpdate").Add_Click({ Run-ScriptOrExe -Name "Update" -Url $L
 $Window.FindName("BtnGenP").Add_Click({ Run-Zip -Name "GenP" -Url $Links.GenP -TargetFile "RunMe.exe" })
 
 $Window.FindName("BtnSFC").Add_Click({ 
-    Write-Log "Starting SFC Scan..."
+    Write-Log "Running SFC Scan in background..."
     Start-Process sfc -ArgumentList "/scannow" -Wait
-    Write-Log "SFC Finished."
+    Write-Log "SFC Complete."
 })
 
 $Window.FindName("BtnWifi").Add_Click({ 
-    Write-Log "Flushing DNS..."
+    Write-Log "Flushing DNS Cache..."
     ipconfig /flushdns | Out-Null
-    Write-Log "Done."
+    Write-Log "Network DNS Flushed."
 })
 
 $Window.FindName("BtnKey").Add_Click({
-    $k = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform').BackupProductKeyDefault
-    Write-Log "Key: $k"
-    [System.Windows.MessageBox]::Show("Windows Key: $k")
+    try {
+        $k = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform').BackupProductKeyDefault
+        Write-Log "Detected Key: $k"
+        [System.Windows.MessageBox]::Show("Windows Key: $k")
+    } catch { Write-Log "Error finding key." }
 })
 
-Write-Log "CrazyAlex Suite v9.1 Initialized."
+Write-Log "CrazyAlex Suite v9.2 Loaded. System Ready."
 $Window.ShowDialog() | Out-Null
