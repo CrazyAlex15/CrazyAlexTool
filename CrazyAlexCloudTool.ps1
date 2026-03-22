@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    CrazyAlex Cloud Suite - Ultimate WPF Edition (Custom UI)
+    CrazyAlexTool
 #>
 
 # --- AUTO-ADMIN ELEVATION ---
@@ -14,13 +14,13 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 # --- 1. YOUR LINKS GO HERE ---
 # ==========================================
 $Links = @{
-    Winrar       = "INSERT_RAW_LINK_FOR_WINRAR_ZIP_HERE"
-    GenP         = "INSERT_RAW_LINK_FOR_GENP_ZIP_HERE"
-    Scrubber     = "INSERT_RAW_LINK_FOR_SCRUBBER_ZIP_HERE"
-    Office16     = "INSERT_RAW_LINK_FOR_OFFICE_16_19_EXE_HERE"
-    OfficeIso    = "INSERT_GOOGLE_DRIVE_LINK_FOR_OFFICE2019_ZIP_HERE"
-    WinTools     = "INSERT_RAW_LINK_FOR_WINOFFICETOOLS_BAT_HERE"
-    UpdateSystem = "INSERT_RAW_LINK_FOR_UPDATESYSTEM_BAT_HERE"
+    Winrar       = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/Winrar.zip"
+    GenP         = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/GenP-main.zip"
+    Scrubber     = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/OfficeScrubber.zip"
+    Office16     = "https://github.com/CrazyAlex15/CrazyAlexTool/releases/download/V1.0/Office_16-19.exe"
+    OfficeIso    = "https://drive.google.com/uc?export=download&id=15zkq2ieVA4IAnoSrY-oBHNE_Qzq6yN_E"
+    WinTools     = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat"
+    UpdateSystem = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat"
 }
 
 # ==========================================
@@ -29,7 +29,7 @@ $Links = @{
 Add-Type -AssemblyName PresentationFramework
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="CrazyAlex Cloud Suite" Height="680" Width="880" 
+        Title="CrazyAlexTool" Height="680" Width="880" 
         WindowStartupLocation="CenterScreen" Background="#121212" 
         FontFamily="Segoe UI" ResizeMode="NoResize">
     <Grid>
@@ -41,7 +41,7 @@ Add-Type -AssemblyName PresentationFramework
         <Border Background="#1E1E1E" Grid.Column="0">
             <StackPanel Margin="15">
                 <TextBlock Text="CRAZY ALEX" Foreground="#00FFFF" FontSize="26" FontWeight="Black" Margin="0,15,0,0"/>
-                <TextBlock Text="CLOUD SUITE v7" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
+                <TextBlock Text="TOOLS" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
                 
                 <TextBlock Text="SYSTEM STATUS:" Foreground="#777777" FontSize="12" Margin="0,0,0,5"/>
                 <TextBlock Name="StatusText" Text="Ready to deploy." Foreground="#00FF00" FontSize="13" TextWrapping="Wrap"/>
