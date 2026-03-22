@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    CrazyAlexTool
+    CrazyAlex Cloud Suite - Ultimate WPF Edition (Final Stable Version)
 #>
 
 # --- AUTO-ADMIN ELEVATION ---
@@ -11,7 +11,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 }
 
 # ==========================================
-# --- 1. YOUR LINKS GO HERE ---
+# --- 1. YOUR VERIFIED LINKS ---
 # ==========================================
 $Links = @{
     Winrar       = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/Winrar.zip"
@@ -28,9 +28,10 @@ $Links = @{
 # ==========================================
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
+
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="CrazyAlexTool" Height="680" Width="880" 
+        Title="CrazyAlex Cloud Suite" Height="680" Width="880" 
         WindowStartupLocation="CenterScreen" Background="#121212" 
         FontFamily="Segoe UI" ResizeMode="NoResize">
     <Grid>
@@ -42,7 +43,7 @@ Add-Type -AssemblyName System.Windows.Forms
         <Border Background="#1E1E1E" Grid.Column="0">
             <StackPanel Margin="15">
                 <TextBlock Text="CRAZY ALEX" Foreground="#00FFFF" FontSize="26" FontWeight="Black" Margin="0,15,0,0"/>
-                <TextBlock Text="TOOLS" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
+                <TextBlock Text="CLOUD SUITE v7" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
                 
                 <TextBlock Text="SYSTEM STATUS:" Foreground="#777777" FontSize="12" Margin="0,0,0,5"/>
                 <TextBlock Name="StatusText" Text="Ready to deploy." Foreground="#00FF00" FontSize="13" TextWrapping="Wrap"/>
@@ -84,6 +85,7 @@ Add-Type -AssemblyName System.Windows.Forms
     </Grid>
 </Window>
 "@
+
 $Reader = (New-Object System.Xml.XmlNodeReader $XAML)
 $Window = [Windows.Markup.XamlReader]::Load($Reader)
 
@@ -99,11 +101,11 @@ $BtnSFC = $Window.FindName("BtnSFC"); $BtnWifi = $Window.FindName("BtnWifi"); $B
 # ==========================================
 
 function Run-ScriptOrExe ($Name, $Url, $Extension) {
-    $StatusText.Text = "Downloading $Name..."; $StatusText.Foreground = "#FFFF00"; [System.Windows.Forms.Application]::DoEvents()
+    $StatusText.Text = "Downloading $Name..."; $StatusText.Foreground = "#FFFF00"
     $TempPath = Join-Path $env:TEMP "$Name$Extension"
     try {
         Invoke-WebRequest -Uri $Url -OutFile $TempPath -UseBasicParsing
-        $StatusText.Text = "Running $Name..."; [System.Windows.Forms.Application]::DoEvents()
+        $StatusText.Text = "Running $Name..."
         Start-Process -FilePath $TempPath -Wait
         Remove-Item -Path $TempPath -Force -ErrorAction SilentlyContinue
         $StatusText.Text = "$Name completed!"; $StatusText.Foreground = "#00FF00"
@@ -111,26 +113,39 @@ function Run-ScriptOrExe ($Name, $Url, $Extension) {
 }
 
 function Run-Zip ($Name, $Url, $TargetFile) {
-    $StatusText.Text = "Downloading $Name..."; $StatusText.Foreground = "#FFFF00"; [System.Windows.Forms.Application]::DoEvents()
+    $StatusText.Text = "Downloading $Name..."; $StatusText.Foreground = "#FFFF00"
     $ZipPath = Join-Path $env:TEMP "$Name.zip"
     $ExtractPath = Join-Path $env:TEMP "CA_$Name"
     
     try {
-        Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
-        $StatusText.Text = "Extracting $Name..."; [System.Windows.Forms.Application]::DoEvents()
+        # Handle Google Drive Large Files
+        if ($Url -like "*drive.google.com*") {
+            $FileId = $Url.Split("id=")[1].Split("&")[0]
+            $BaseUrl = "https://docs.google.com/uc?export=download&id=$FileId"
+            $Response = Invoke-WebRequest -Uri $BaseUrl -SessionVariable "Session" -UserAgent "Mozilla/5.0" -UseBasicParsing
+            $Token = $Response.Links | Where-Object { $_.href -like "*confirm=*" } | Select-Object -ExpandProperty href
+            if ($Token) {
+                $DirectLink = "https://docs.google.com/uc?export=download&confirm=$($Token.Split('=')[-1])&id=$FileId"
+                Invoke-WebRequest -Uri $DirectLink -OutFile $ZipPath -UserAgent "Mozilla/5.0" -UseBasicParsing
+            } else {
+                Invoke-WebRequest -Uri $BaseUrl -OutFile $ZipPath -UserAgent "Mozilla/5.0" -UseBasicParsing
+            }
+        } else {
+            Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
+        }
+
+        $StatusText.Text = "Extracting $Name..."
         if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
         Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
         
         $ExeToRun = Get-ChildItem -Path $ExtractPath -Filter $TargetFile -Recurse | Select-Object -First 1
         
         if ($ExeToRun) {
-            $StatusText.Text = "Running $Name..."; [System.Windows.Forms.Application]::DoEvents()
+            $StatusText.Text = "Running $Name..."
             $oldDir = Get-Location
             Set-Location $ExeToRun.DirectoryName
             Start-Process -FilePath $ExeToRun.FullName -Wait
             Set-Location $oldDir
-        } else {
-            [System.Windows.MessageBox]::Show("File $TargetFile not found in ZIP!", "Error")
         }
         
         Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue
@@ -140,20 +155,20 @@ function Run-Zip ($Name, $Url, $TargetFile) {
 }
 
 function Run-GenP_Dynamic ($Url) {
-    $StatusText.Text = "Downloading GenP-main..."; $StatusText.Foreground = "#FFFF00"; [System.Windows.Forms.Application]::DoEvents()
+    $StatusText.Text = "Downloading GenP-main..."; $StatusText.Foreground = "#FFFF00"
     $ZipPath = Join-Path $env:TEMP "GenP.zip"
     $ExtractPath = Join-Path $env:TEMP "CA_GenP"
     
     try {
         Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
-        $StatusText.Text = "Extracting GenP-main..."; [System.Windows.Forms.Application]::DoEvents()
+        $StatusText.Text = "Extracting GenP-main..."
         if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force }
         Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
         
         $ExeList = Get-ChildItem -Path "$ExtractPath\GenP-main\Releases" -Filter "*.exe" -Recurse
         
         if ($ExeList.Count -eq 0) {
-            [System.Windows.MessageBox]::Show("No .exe files found in Releases folder!", "Error")
+            [System.Windows.MessageBox]::Show("No .exe files found!", "Error")
             return
         }
 
@@ -177,41 +192,33 @@ function Run-GenP_Dynamic ($Url) {
         $BtnRun.Add_Click({
             $SelectedName = $Combo.SelectedItem
             $SelectedExe = $ExeList | Where-Object Name -eq $SelectedName
-            
             $oldDir = Get-Location
             Set-Location $SelectedExe.DirectoryName
             Start-Process -FilePath $SelectedExe.FullName -Wait
             Set-Location $oldDir
-            
             $PickerWindow.Close()
         })
         
-        $StatusText.Text = "Waiting for GenP-main..."; [System.Windows.Forms.Application]::DoEvents()
+        $StatusText.Text = "Waiting for GenP..."
         $PickerWindow.ShowDialog() | Out-Null
         
         Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue
         Remove-Item -Path $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
-        $StatusText.Text = "GenP-main finished!"; $StatusText.Foreground = "#00FF00"
-        
-    } catch { $StatusText.Text = "Error in GenP-main"; $StatusText.Foreground = "Red" }
+        $StatusText.Text = "GenP finished!"; $StatusText.Foreground = "#00FF00"
+    } catch { $StatusText.Text = "Error in GenP" }
 }
 
 # ==========================================
 # --- 4. BUTTON BINDINGS ---
 # ==========================================
-
-# OFFICE TOOLS
 $BtnOfficeSetup.Add_Click({ Run-Zip -Name "Office2019_x64_x86" -Url $Links.OfficeIso -TargetFile "setup.exe" })
 $BtnOfficeAct.Add_Click({ Run-ScriptOrExe -Name "Office_16-19" -Url $Links.Office16 -Extension ".exe" })
 $BtnScrubber.Add_Click({ Run-Zip -Name "OfficeScrubber" -Url $Links.Scrubber -TargetFile "OfficeScrubber.cmd" })
 $BtnWinTools.Add_Click({ Run-ScriptOrExe -Name "WinOfficeTools" -Url $Links.WinTools -Extension ".bat" })
-
-# SCRIPTS
 $BtnGenP.Add_Click({ Run-GenP_Dynamic -Url $Links.GenP })
 $BtnWinrar.Add_Click({ Run-Zip -Name "Winrar" -Url $Links.Winrar -TargetFile "Winrar.cmd" })
+$BtnUpdate.Add_Click({ Run-ScriptOrExe -Name "UpdateSystemWithPSCheck" -Url $Links.UpdateSystem -Extension ".bat" })
 
-# SYSTEM TOOLS
-$BtnUpdate.Add_Click({ Run-ScriptOrExe -Name "SystemUpdate" -Url $Links.UpdateSystem -Extension ".bat" })
 $BtnSFC.Add_Click({ Start-Process cmd -ArgumentList "/c sfc /scannow & pause" })
 $BtnWifi.Add_Click({ ipconfig /flushdns | Out-Null; ipconfig /release | Out-Null; ipconfig /renew | Out-Null; $StatusText.Text = "Network Reset Complete!" })
 $BtnKey.Add_Click({
