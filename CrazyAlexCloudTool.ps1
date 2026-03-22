@@ -27,6 +27,7 @@ $Links = @{
 # --- 2. WPF GUI (USER INTERFACE) ---
 # ==========================================
 Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName System.Windows.Forms
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         Title="CrazyAlexTool" Height="680" Width="880" 
