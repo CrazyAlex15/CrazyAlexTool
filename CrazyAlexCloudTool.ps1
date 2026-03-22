@@ -18,7 +18,7 @@ $Links = @{
     GenP         = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/GenP-main.zip"
     Scrubber     = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/OfficeScrubber.zip"
     Office16     = "https://github.com/CrazyAlex15/CrazyAlexTool/releases/download/V1.0/Office_16-19.exe"
-    OfficeIso    = "https://drive.google.com/uc?export=download&id=15zkq2ieVA4IAnoSrY-oBHNE_Qzq6yN_E"
+    OfficeIso    = "https://drive.google.com/uc?export=download&confirm=t&id=15zkq2ieVA4IAnoSrY-oBHNE_Qzq6yN_E"
     WinTools     = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat"
     UpdateSystem = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat"
 }
