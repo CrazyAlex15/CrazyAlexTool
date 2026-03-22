@@ -1,5 +1,5 @@
 <#
-    CrazyAlex Cloud Suite - Terminal Edition (No OfficeIso)
+    CrazyAlex Cloud Suite - v9.1 (Fixed Layout)
 #>
 
 # --- AUTO-ADMIN ELEVATION ---
@@ -21,7 +21,7 @@ $Links = @{
 }
 
 # ==========================================
-# --- 2. WPF GUI (WITH INTEGRATED TERMINAL) ---
+# --- 2. WPF GUI (FIXED XAML) ---
 # ==========================================
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
@@ -40,7 +40,7 @@ Add-Type -AssemblyName System.Windows.Forms
         <Border Background="#1E1E1E" Grid.Column="0">
             <StackPanel Margin="15">
                 <TextBlock Text="CRAZY ALEX" Foreground="#00FFFF" FontSize="26" FontWeight="Black" Margin="0,15,0,0"/>
-                <TextBlock Text="CLOUD SUITE v9" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
+                <TextBlock Text="CLOUD SUITE v9.1" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
                 <TextBlock Text="SYSTEM STATUS:" Foreground="#777777" FontSize="12" Margin="0,0,0,5"/>
                 <TextBlock Name="StatusText" Text="Ready." Foreground="#00FF00" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,20"/>
             </StackPanel>
@@ -53,9 +53,9 @@ Add-Type -AssemblyName System.Windows.Forms
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
-                <TextBlock Text="OFFICE &amp; ACTIVATORS" Foreground="#00FFFF" FontSize="16" FontWeight="Bold" Margin="0,0,0 autor,"/>
+                <TextBlock Text="OFFICE &amp; ACTIVATORS" Foreground="#00FFFF" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
                 <WrapPanel>
-                    <Button Name="BtnWinOfficeTools" Content="WinOfficeTools (MAS)" Width="180" Height="40" Margin="0,0 autor,10,10" Background="#D81B60" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
+                    <Button Name="BtnWinOfficeTools" Content="WinOfficeTools (MAS)" Width="180" Height="40" Margin="0,0,10,10" Background="#D81B60" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
                     <Button Name="BtnOfficeAct" Content="Activate Office 16-19" Width="180" Height="40" Margin="0,0,10,10" Background="#2D2D30" Foreground="White" BorderThickness="0"/>
                     <Button Name="BtnScrubber" Content="Office Scrubber" Width="180" Height="40" Margin="0,0,10,10" Background="#2D2D30" Foreground="White" BorderThickness="0"/>
                     <Button Name="BtnGenP" Content="GenP-main" Width="180" Height="40" Margin="0,0,10,10" Background="#5C2E7E" Foreground="White" BorderThickness="0"/>
@@ -83,28 +83,35 @@ Add-Type -AssemblyName System.Windows.Forms
 "@
 
 $Reader = (New-Object System.Xml.XmlNodeReader $XAML)
-$Window = [Windows.Markup.XamlReader]::Load($Reader)
+try {
+    $Window = [Windows.Markup.XamlReader]::Load($Reader)
+} catch {
+    Write-Host "XAML Error: $($_.Exception.Message)" -ForegroundColor Red
+    pause
+    exit
+}
+
 $StatusText = $Window.FindName("StatusText")
 $OutputBox = $Window.FindName("OutputBox")
 
-# Helper to Log to Console
 function Write-Log ($Message) {
     $Timestamp = Get-Date -Format "HH:mm:ss"
-    $OutputBox.AppendText("[$Timestamp] $Message`r`n")
-    $OutputBox.ScrollToEnd()
+    if ($OutputBox) {
+        $OutputBox.AppendText("[$Timestamp] $Message`r`n")
+        $OutputBox.ScrollToEnd()
+    }
     [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
 }
 
-# --- CORE FUNCTIONS ---
-
+# --- FUNCTIONS ---
 function Run-ScriptOrExe ($Name, $Url, $Extension) {
     $StatusText.Text = "Running $Name..."; Write-Log "Downloading $Name..."
     $TempPath = Join-Path $env:TEMP "$Name$Extension"
     try {
         Invoke-WebRequest -Uri $Url -OutFile $TempPath -UseBasicParsing
-        Write-Log "Launching $Name. Please follow external prompts if any."
+        Write-Log "Launching $Name..."
         Start-Process -FilePath $TempPath -Wait
-        Write-Log "$Name operation finished."
+        Write-Log "Done."
     } catch { Write-Log "ERROR: $($_.Exception.Message)" }
     $StatusText.Text = "Ready."
 }
@@ -115,7 +122,6 @@ function Run-Zip ($Name, $Url, $TargetFile) {
     $ExtractPath = Join-Path $env:TEMP "CA_$Name"
     try {
         Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
-        Write-Log "Extracting..."
         if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force }
         Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
         $Exe = Get-ChildItem $ExtractPath -Filter $TargetFile -Recurse | Select -First 1
@@ -128,16 +134,11 @@ function Run-Zip ($Name, $Url, $TargetFile) {
     $StatusText.Text = "Ready."
 }
 
-# --- BUTTON BINDINGS ---
-
-# WinOfficeTools - DIRECT EXECUTION (No .bat needed)
+# --- BINDINGS ---
 $Window.FindName("BtnWinOfficeTools").Add_Click({
-    Write-Log "Launching WinOfficeTools (MAS) via Cloud Command..."
-    $StatusText.Text = "Running MAS..."
-    # Τρέχει απευθείας την εντολή που είχε το .bat
+    Write-Log "Launching MAS (Microsoft Activation Scripts)..."
     powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://get.activated.win | iex"
-    Write-Log "MAS Task completed."
-    $StatusText.Text = "Ready."
+    Write-Log "MAS Finished."
 })
 
 $Window.FindName("BtnOfficeAct").Add_Click({ Run-ScriptOrExe -Name "OfficeAct" -Url $Links.Office16 -Extension ".exe" })
@@ -147,24 +148,22 @@ $Window.FindName("BtnUpdate").Add_Click({ Run-ScriptOrExe -Name "Update" -Url $L
 $Window.FindName("BtnGenP").Add_Click({ Run-Zip -Name "GenP" -Url $Links.GenP -TargetFile "RunMe.exe" })
 
 $Window.FindName("BtnSFC").Add_Click({ 
-    Write-Log "Starting SFC Scan (System File Checker)..."
+    Write-Log "Starting SFC Scan..."
     Start-Process sfc -ArgumentList "/scannow" -Wait
-    Write-Log "SFC Scan finished."
+    Write-Log "SFC Finished."
 })
 
 $Window.FindName("BtnWifi").Add_Click({ 
-    Write-Log "Flushing DNS and Resetting Network..."
+    Write-Log "Flushing DNS..."
     ipconfig /flushdns | Out-Null
-    Write-Log "Network Reset completed."
+    Write-Log "Done."
 })
 
 $Window.FindName("BtnKey").Add_Click({
-    try {
-        $k = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform').BackupProductKeyDefault
-        Write-Log "Windows Key Detected: $k"
-        [System.Windows.MessageBox]::Show("Windows Key: $k")
-    } catch { Write-Log "Could not retrieve key." }
+    $k = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform').BackupProductKeyDefault
+    Write-Log "Key: $k"
+    [System.Windows.MessageBox]::Show("Windows Key: $k")
 })
 
-Write-Log "CrazyAlex Suite v9 Started. System Ready."
+Write-Log "CrazyAlex Suite v9.1 Initialized."
 $Window.ShowDialog() | Out-Null
