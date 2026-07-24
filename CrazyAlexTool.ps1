@@ -7,9 +7,10 @@
 .DESCRIPTION
     Windows utility and maintenance tool with:
     - Office setup (via Microsoft Office Deployment Tool)
-    - Office Scrubber (dropdown picker)
+    - Office Scrubber (WPF dropdown replaces CMD menu)
     - Win Office Tools
-    - WinRAR (silent install + license apply)
+    - WinRAR activation (license apply only)
+    - GenP activator (dropdown picker)
     - System Update
     - Download progress
     - System information dashboard with all drives
@@ -29,7 +30,7 @@
 # VERSION MARKER
 # ============================================================
 
-$script:AppVersion = "1.1.0"
+$script:AppVersion = "1.2.0"
 Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
 
 # ============================================================
@@ -91,10 +92,17 @@ if (-not (Test-IsAdministrator)) {
             $scriptPath = $temporaryScript
         }
 
-        $powershellPath = Join-Path $PSHOME "powershell.exe"
+        # ALWAYS prefer Windows PowerShell 5.1 for WPF reliability.
+        $powershellPath = Join-Path `
+            $env:WINDIR `
+            "System32\WindowsPowerShell\v1.0\powershell.exe"
 
         if (-not (Test-Path $powershellPath)) {
-            $powershellPath = "powershell.exe"
+            $powershellPath = (Get-Command powershell.exe -ErrorAction SilentlyContinue).Source
+        }
+
+        if (-not $powershellPath) {
+            throw "Could not locate powershell.exe on this system."
         }
 
         $arguments = @(
@@ -109,22 +117,10 @@ if (-not (Test-IsAdministrator)) {
             -FilePath $powershellPath `
             -ArgumentList $arguments `
             -Verb RunAs `
-            -Wait `
             -ErrorAction Stop | Out-Null
     }
     catch {
         Write-Error "Could not start CrazyAlexTool as administrator: $($_.Exception.Message)"
-    }
-    finally {
-        if (
-            $temporaryScript -and
-            (Test-Path -LiteralPath $temporaryScript)
-        ) {
-            Remove-Item `
-                -LiteralPath $temporaryScript `
-                -Force `
-                -ErrorAction SilentlyContinue
-        }
     }
 
     return
@@ -158,6 +154,7 @@ $script:Links = [ordered]@{
     WinTools = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat"
     Winrar   = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/rarreg.key"
     Update   = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat"
+    GenP     = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/GenP-main.zip"
 }
 
 $script:AccentMap = [ordered]@{
@@ -591,13 +588,20 @@ Load-AppSettings
                         </WrapPanel>
 
                         <TextBlock Name="HdrScripts"
-                                   Text="SYSTEM SCRIPTS"
+                                   Text="SCRIPTS"
                                    Foreground="#00FFFF"
                                    FontSize="17"
                                    FontWeight="Bold"
                                    Margin="0,25,0,15"/>
 
                         <WrapPanel>
+                            <Button Name="BtnGenP"
+                                    Content="GenP Activator"
+                                    Width="205"
+                                    Height="48"
+                                    Style="{StaticResource ToolButton}"
+                                    Tag="genp activator adobe"/>
+
                             <Button Name="BtnUpdate"
                                     Content="System Update"
                                     Width="205"
@@ -771,6 +775,7 @@ $BtnOfficeODT       = $Window.FindName("BtnOfficeODT")
 $BtnScrubber        = $Window.FindName("BtnScrubber")
 $BtnWinTools        = $Window.FindName("BtnWinTools")
 $BtnWinrar          = $Window.FindName("BtnWinrar")
+$BtnGenP            = $Window.FindName("BtnGenP")
 $BtnUpdate          = $Window.FindName("BtnUpdate")
 
 $TxtDownloadFolder  = $Window.FindName("TxtDownloadFolder")
@@ -874,7 +879,7 @@ function Confirm-Action {
 }
 
 # ============================================================
-# FILE PICKER (GenP-style dropdown)
+# FILE PICKER (used by GenP)
 # ============================================================
 
 function Show-FilePicker {
@@ -894,7 +899,6 @@ function Show-FilePicker {
         FontFamily="Segoe UI">
 
     <Window.Resources>
-
         <Style x:Key="PickerComboItem" TargetType="{x:Type ComboBoxItem}">
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="Background" Value="#25252B"/>
@@ -978,7 +982,7 @@ function Show-FilePicker {
                                         BorderThickness="1"
                                         CornerRadius="4"
                                         MinWidth="{TemplateBinding ActualWidth}">
-                                    <ScrollViewer MaxHeight="260">
+                                    <ScrollViewer MaxHeight="300">
                                         <ItemsPresenter/>
                                     </ScrollViewer>
                                 </Border>
@@ -988,7 +992,6 @@ function Show-FilePicker {
                 </Setter.Value>
             </Setter>
         </Style>
-
     </Window.Resources>
 
     <StackPanel Margin="22">
@@ -1061,6 +1064,197 @@ function Show-FilePicker {
     [void]$pickerWindow.ShowDialog()
 
     return $script:PickerResult
+}
+
+# ============================================================
+# LABEL PICKER (used by Office Scrubber)
+# ============================================================
+
+function Show-LabelPicker {
+    param(
+        [string]$Title = "Select an option",
+        [string]$Prompt = "Select an option to run:",
+        [object[]]$Options
+    )
+
+    [xml]$PickerXAML = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="$Title"
+        Height="280" Width="460"
+        WindowStartupLocation="CenterOwner"
+        Background="#1A1A1A"
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <Style x:Key="PickerComboItem" TargetType="{x:Type ComboBoxItem}">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#25252B"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                        <Border x:Name="B"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="B" Property="Background" Value="#005F73"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="B" Property="Background" Value="#174A5A"/>
+                                <Setter Property="Foreground" Value="#00FFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PickerCombo" TargetType="{x:Type ComboBox}">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#25252B"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource PickerComboItem}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid>
+                            <ToggleButton Focusable="False"
+                                          ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen,
+                                            RelativeSource={RelativeSource TemplatedParent},
+                                            Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                        <Border x:Name="TBB"
+                                                Background="#25252B"
+                                                BorderBrush="#444444"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                            <Path Data="M 0 0 L 5 5 L 10 0 Z"
+                                                  Fill="#FFFFFF"
+                                                  HorizontalAlignment="Right"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,12,0"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="TBB" Property="BorderBrush" Value="#00FFFF"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="TBB" Property="BorderBrush" Value="#00FFFF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <ContentPresenter
+                                Content="{TemplateBinding SelectionBoxItem}"
+                                ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                Margin="10,0,35,0"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                IsHitTestVisible="False"
+                                TextElement.Foreground="#FFFFFF"/>
+
+                            <Popup Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}">
+                                <Border Background="#1E1E22"
+                                        BorderBrush="#00FFFF"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        MinWidth="{TemplateBinding ActualWidth}">
+                                    <ScrollViewer MaxHeight="300">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="22">
+        <TextBlock Name="TxtPrompt"
+                   Text="$Prompt"
+                   Foreground="#00FFFF"
+                   FontSize="14"
+                   FontWeight="Bold"
+                   Margin="0,0,0,16"
+                   TextWrapping="Wrap"/>
+
+        <ComboBox Name="CmbOptions"
+                  Style="{StaticResource PickerCombo}"
+                  Height="38"
+                  FontSize="13"
+                  Margin="0,0,0,22"/>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Name="BtnCancel"
+                    Content="Cancel"
+                    Width="100"
+                    Height="36"
+                    Margin="0,0,10,0"
+                    Background="#2A2A30"
+                    Foreground="White"
+                    BorderThickness="1"
+                    BorderBrush="#444444"
+                    Cursor="Hand"/>
+            <Button Name="BtnRun"
+                    Content="Run Selected"
+                    Width="140"
+                    Height="36"
+                    Background="#00B4D8"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    FontWeight="SemiBold"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
+"@
+
+    $reader = New-Object System.Xml.XmlNodeReader $PickerXAML
+    $pickerWindow = [Windows.Markup.XamlReader]::Load($reader)
+
+    $combo = $pickerWindow.FindName("CmbOptions")
+    $btnRun = $pickerWindow.FindName("BtnRun")
+    $btnCancel = $pickerWindow.FindName("BtnCancel")
+
+    foreach ($opt in $Options) {
+        [void]$combo.Items.Add($opt.Label)
+    }
+    $combo.SelectedIndex = 0
+
+    $script:LabelPickerResult = $null
+
+    $btnRun.Add_Click({
+        $chosenLabel = $combo.SelectedItem
+        $script:LabelPickerResult = $Options |
+            Where-Object { $_.Label -eq $chosenLabel } |
+            Select-Object -First 1
+        $pickerWindow.Close()
+    })
+
+    $btnCancel.Add_Click({
+        $script:LabelPickerResult = $null
+        $pickerWindow.Close()
+    })
+
+    $pickerWindow.Owner = $Window
+    [void]$pickerWindow.ShowDialog()
+
+    return $script:LabelPickerResult
 }
 
 # ============================================================
@@ -1195,75 +1389,69 @@ function Invoke-SingleFileTool {
     }
 }
 
-function Invoke-ZipTool {
-    param(
-        [string]$Name,
-        [string]$Url,
-        [string]$TargetFile,
-        [switch]$PickerMode,
-        [string]$PickerPattern = "*.cmd"
-    )
+# ============================================================
+# GENP (dropdown picker)
+# ============================================================
 
-    $zipPath = Join-Path $script:TemporaryPath "$Name.zip"
-    $extractPath = Join-Path $script:TemporaryPath "Extracted-$Name"
-
+function Invoke-GenP {
     try {
+        if (-not (Confirm-Action `
+            "Download GenP and choose a version to run?" `
+            "GenP Activator")) {
+            return
+        }
+
+        $zipPath = Join-Path $script:TemporaryPath "GenP.zip"
+        $extractPath = Join-Path $script:TemporaryPath "Extracted-GenP"
+
         if (Test-Path $extractPath) {
             Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
         }
         New-Item -Path $extractPath -ItemType Directory -Force | Out-Null
 
-        Set-Status "Downloading $Name..." "#FFFF00"
-        Invoke-TrackedDownload -Url $Url -OutputFile $zipPath
+        Set-Status "Downloading GenP..." "#FFFF00"
+        Invoke-TrackedDownload -Url $script:Links.GenP -OutputFile $zipPath
 
-        Set-Status "Extracting $Name..." "#FFFF00"
+        Set-Status "Extracting GenP..." "#FFFF00"
         Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
-        if ($PickerMode) {
-            $candidates = @(Get-ChildItem `
-                -Path $extractPath `
-                -Filter $PickerPattern `
-                -File `
-                -Recurse `
-                -ErrorAction SilentlyContinue)
+        # Look inside the standard GenP-main\Releases folder first
+        $releasesPath = Join-Path $extractPath "GenP-main\Releases"
 
-            if ($candidates.Count -eq 0) {
-                throw "No files matching '$PickerPattern' were found in the archive."
-            }
-
-            Set-Status "Waiting for user selection..." "#FFFF00"
-            $selected = Show-FilePicker -Title "Select $Name option" -Files $candidates
-
-            if (-not $selected) {
-                Set-Status "$Name cancelled." "#FFAA00"
-                return
-            }
-
-            Set-Status "Running $($selected.Name)..." "#FFFF00"
-            Start-DownloadedFile -Path $selected.FullName
-        }
-        else {
-            $target = Get-ChildItem `
-                -Path $extractPath `
-                -Filter $TargetFile `
-                -File `
-                -Recurse `
-                -ErrorAction SilentlyContinue |
-                Select-Object -First 1
-
-            if (-not $target) {
-                throw "Could not find '$TargetFile' inside the archive."
-            }
-
-            Set-Status "Running $Name..." "#FFFF00"
-            Start-DownloadedFile -Path $target.FullName
+        if (-not (Test-Path $releasesPath)) {
+            $releasesPath = $extractPath
         }
 
-        Set-Status "$Name completed." "#00FF00"
+        $exeList = @(Get-ChildItem `
+            -Path $releasesPath `
+            -Filter "*.exe" `
+            -File `
+            -Recurse `
+            -ErrorAction SilentlyContinue)
+
+        if ($exeList.Count -eq 0) {
+            throw "No .exe files were found in the GenP archive (they may have been quarantined by antivirus)."
+        }
+
+        Set-Status "Waiting for GenP version selection..." "#FFFF00"
+
+        $selected = Show-FilePicker `
+            -Title "Select GenP Version" `
+            -Files $exeList
+
+        if (-not $selected) {
+            Set-Status "GenP cancelled." "#FFAA00"
+            return
+        }
+
+        Set-Status "Running $($selected.Name)..." "#FFFF00"
+        Start-DownloadedFile -Path $selected.FullName
+
+        Set-Status "GenP completed." "#00FF00"
         Set-Progress -Percent 100 -Text "Complete"
     }
     catch {
-        Show-ToolError -Name $Name -Exception $_
+        Show-ToolError -Name "GenP" -Exception $_
     }
     finally {
         Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
@@ -1272,84 +1460,115 @@ function Invoke-ZipTool {
 }
 
 # ============================================================
-# WINRAR INSTALL + ACTIVATE
+# OFFICE SCRUBBER (GUI dropdown replaces the CMD menu)
 # ============================================================
 
-function Install-WinRAR {
+function Invoke-OfficeScrubber {
     try {
-        if (-not (Confirm-Action `
-            "Download WinRAR, install it silently, and apply the license key?" `
-            "Install WinRAR")) {
+        # Options offered by Office Scrubber v12.
+        # Each entry maps a friendly name to the keystroke
+        # the .cmd expects when its menu is shown.
+        $scrubberOptions = @(
+            [pscustomobject]@{ Label = "Scrub ALL";               Key = "1" }
+            [pscustomobject]@{ Label = "Scrub Office C2R (*)";    Key = "2" }
+            [pscustomobject]@{ Label = "Scrub Office 2016";       Key = "3" }
+            [pscustomobject]@{ Label = "Scrub Office 2013";       Key = "4" }
+            [pscustomobject]@{ Label = "Scrub Office 2010";       Key = "5" }
+            [pscustomobject]@{ Label = "Scrub Office 2007";       Key = "6" }
+            [pscustomobject]@{ Label = "Scrub Office 2003";       Key = "7" }
+            [pscustomobject]@{ Label = "Scrub Office UWP";        Key = "8" }
+            [pscustomobject]@{ Label = "Clean vNext Licenses";    Key = "C" }
+            [pscustomobject]@{ Label = "Remove all Licenses";     Key = "R" }
+            [pscustomobject]@{ Label = "Reset C2R Licenses";      Key = "T" }
+            [pscustomobject]@{ Label = "Uninstall all Keys";      Key = "U" }
+        )
+
+        $selected = Show-LabelPicker `
+            -Title "Office Scrubber - Select Action" `
+            -Prompt "Choose which Office Scrubber action to run:" `
+            -Options $scrubberOptions
+
+        if (-not $selected) {
+            Set-Status "Office Scrubber cancelled." "#FFAA00"
             return
         }
 
-        $zipPath = Join-Path $script:TemporaryPath "WinRAR.zip"
-        $extractPath = Join-Path $script:TemporaryPath "Extracted-WinRAR"
+        if (-not (Confirm-Action `
+            "Run Office Scrubber option:`n`n$($selected.Label)`n`nContinue?" `
+            "Office Scrubber")) {
+            return
+        }
+
+        $zipPath = Join-Path $script:TemporaryPath "OfficeScrubber.zip"
+        $extractPath = Join-Path $script:TemporaryPath "Extracted-OfficeScrubber"
 
         if (Test-Path $extractPath) {
             Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
         }
         New-Item -Path $extractPath -ItemType Directory -Force | Out-Null
 
-        # 1. Download
-        Set-Status "Downloading WinRAR..." "#FFFF00"
-        Invoke-TrackedDownload -Url $script:Links.Winrar -OutputFile $zipPath
+        Set-Status "Downloading Office Scrubber..." "#FFFF00"
+        Invoke-TrackedDownload -Url $script:Links.Scrubber -OutputFile $zipPath
 
-        # 2. Extract
-        Set-Status "Extracting WinRAR archive..." "#FFFF00"
+        Set-Status "Extracting Office Scrubber..." "#FFFF00"
         Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
-        # 3. Find the installer .exe
-        $installer = Get-ChildItem `
+        $scrubberCmd = Get-ChildItem `
             -Path $extractPath `
-            -Filter "*.exe" `
+            -Filter "OfficeScrubber.cmd" `
             -File `
             -Recurse `
             -ErrorAction SilentlyContinue |
-            Where-Object {
-                $_.Name -match 'winrar' -or
-                $_.Name -match '^wrar'
-            } |
             Select-Object -First 1
 
-        if (-not $installer) {
-            $installer = Get-ChildItem `
+        if (-not $scrubberCmd) {
+            $scrubberCmd = Get-ChildItem `
                 -Path $extractPath `
-                -Filter "*.exe" `
+                -Filter "*.cmd" `
                 -File `
                 -Recurse `
                 -ErrorAction SilentlyContinue |
                 Select-Object -First 1
         }
 
-        if (-not $installer) {
-            throw "No WinRAR installer .exe was found inside the archive."
+        if (-not $scrubberCmd) {
+            throw "OfficeScrubber.cmd was not found inside the archive."
         }
 
-        # 4. Find the license key file
-        $licenseKey = Get-ChildItem `
-            -Path $extractPath `
-            -Filter "rarreg.key" `
-            -File `
-            -Recurse `
-            -ErrorAction SilentlyContinue |
-            Select-Object -First 1
+        Set-Status "Running Office Scrubber: $($selected.Label)..." "#FFFF00"
+        Set-Progress -Indeterminate -Text "Working..."
 
-        # 5. Install silently
-        Set-Status "Installing WinRAR silently..." "#FFFF00"
-        Set-Progress -Indeterminate -Text "Installing"
+        $workingDir = $scrubberCmd.DirectoryName
+        $cmdPath = $scrubberCmd.FullName
 
-        $installProcess = Start-Process `
-            -FilePath $installer.FullName `
-            -ArgumentList "/s" `
-            -Wait `
-            -PassThru
+        # Pipe the chosen keystroke plus '0' (exit) into the .cmd.
+        # The .cmd sees this on its 'set /p' prompt and runs the action.
+        $wrapper = "/d /c ""pushd """"$workingDir"""" && (echo $($selected.Key)& echo 0) | """"$cmdPath"""" & echo. & echo [Finished] & pause"""
 
-        if ($installProcess.ExitCode -ne 0) {
-            throw "WinRAR installer exited with code $($installProcess.ExitCode)."
-        }
+        Start-Process `
+            -FilePath "cmd.exe" `
+            -ArgumentList $wrapper `
+            -WorkingDirectory $workingDir `
+            -Wait
 
-        # 6. Locate installed WinRAR folder
+        Set-Progress -Percent 100 -Text "Complete"
+        Set-Status "Office Scrubber finished: $($selected.Label)" "#00FF00"
+    }
+    catch {
+        Show-ToolError -Name "Office Scrubber" -Exception $_
+    }
+    finally {
+        Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# ============================================================
+# WINRAR ACTIVATION (license apply only)
+# ============================================================
+
+function Activate-WinRAR {
+    try {
         $possiblePaths = @(
             (Join-Path $env:ProgramFiles "WinRAR")
             (Join-Path ${env:ProgramFiles(x86)} "WinRAR")
@@ -1360,39 +1579,62 @@ function Install-WinRAR {
             Select-Object -First 1
 
         if (-not $winrarFolder) {
-            throw "WinRAR installed but its folder could not be located."
+            [System.Windows.MessageBox]::Show(
+                "WinRAR is not installed on this computer.`n`n" +
+                "Please install WinRAR first from:`nhttps://www.win-rar.com/download.html`n`n" +
+                "Then run this activator again.",
+                "WinRAR Not Found",
+                [System.Windows.MessageBoxButton]::OK,
+                [System.Windows.MessageBoxImage]::Warning
+            ) | Out-Null
+
+            Set-Status "WinRAR is not installed." "#FFAA00"
+            return
         }
 
-        # 7. Apply the license
-        if ($licenseKey) {
-            Set-Status "Applying WinRAR license..." "#FFFF00"
+        if (-not (Confirm-Action `
+            "WinRAR was found at:`n$winrarFolder`n`nApply the license key?" `
+            "Activate WinRAR")) {
+            return
+        }
 
-            $destination = Join-Path $winrarFolder "rarreg.key"
+        $keyPath = Join-Path $script:TemporaryPath "rarreg.key"
 
-            Copy-Item `
-                -Path $licenseKey.FullName `
-                -Destination $destination `
-                -Force
+        Set-Status "Downloading WinRAR license..." "#FFFF00"
+        Invoke-TrackedDownload -Url $script:Links.Winrar -OutputFile $keyPath
 
-            if (Test-Path $destination) {
-                Set-Status "WinRAR installed and licensed." "#00FF00"
-            }
-            else {
-                Set-Status "WinRAR installed but license copy failed." "#FFAA00"
-            }
+        $content = Get-Content -Path $keyPath -Raw -ErrorAction Stop
+
+        if ($content -notmatch 'RAR registration data') {
+            throw "Downloaded file does not look like a valid rarreg.key."
+        }
+
+        Set-Status "Applying license..." "#FFFF00"
+        $destination = Join-Path $winrarFolder "rarreg.key"
+
+        Copy-Item -Path $keyPath -Destination $destination -Force
+
+        if (Test-Path $destination) {
+            Set-Status "WinRAR activated successfully!" "#00FF00"
+            Set-Progress -Percent 100 -Text "Complete"
+
+            [System.Windows.MessageBox]::Show(
+                "WinRAR has been activated.`n`n" +
+                "Open WinRAR to confirm - the trial notice should be gone.",
+                "WinRAR Activated",
+                [System.Windows.MessageBoxButton]::OK,
+                [System.Windows.MessageBoxImage]::Information
+            ) | Out-Null
         }
         else {
-            Set-Status "WinRAR installed (no license key found in archive)." "#FFAA00"
+            throw "License file was not copied successfully."
         }
-
-        Set-Progress -Percent 100 -Text "Complete"
     }
     catch {
-        Show-ToolError -Name "WinRAR" -Exception $_
+        Show-ToolError -Name "WinRAR Activation" -Exception $_
     }
     finally {
-        Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $keyPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -1886,6 +2128,7 @@ $script:SearchableControls = @(
     $BtnScrubber
     $BtnWinTools
     $BtnWinrar
+    $BtnGenP
     $BtnUpdate
     $BtnSaveSettings
     $BtnResetSettings
@@ -1955,23 +2198,16 @@ $BtnExportWifi.Add_Click({ Export-WiFiPasswords })
 $BtnKey.Add_Click({ Show-WindowsProductKey })
 
 $BtnOfficeODT.Add_Click({ Install-OfficeODT })
-
-$BtnScrubber.Add_Click({
-    Invoke-ZipTool `
-        -Name "OfficeScrubber" `
-        -Url $script:Links.Scrubber `
-        -PickerMode `
-        -PickerPattern "*.cmd"
-})
-
+$BtnScrubber.Add_Click({ Invoke-OfficeScrubber })
 $BtnWinTools.Add_Click({
     Invoke-SingleFileTool `
         -Name "WinOfficeTools" `
         -Url $script:Links.WinTools `
         -Extension ".bat"
 })
-
 $BtnWinrar.Add_Click({ Activate-WinRAR })
+
+$BtnGenP.Add_Click({ Invoke-GenP })
 
 $BtnUpdate.Add_Click({
     Invoke-SingleFileTool `
@@ -2005,16 +2241,32 @@ $ChkAutoRefresh.Add_Click({
 $CmbAccent.Add_SelectionChanged({ Apply-AccentColor })
 
 $Window.Add_Closing({
-    $script:InfoTimer.Stop()
+    try {
+        if ($script:InfoTimer) {
+            $script:InfoTimer.Stop()
+            $script:InfoTimer = $null
+        }
+    } catch { }
 
-    $script:Settings.DownloadFolder = $TxtDownloadFolder.Text
-    $script:Settings.ConfirmActions = ($ChkConfirmActions.IsChecked -eq $true)
-    $script:Settings.AutoRefresh = ($ChkAutoRefresh.IsChecked -eq $true)
-    $script:Settings.Accent = [string]$CmbAccent.SelectedItem
+    try {
+        $script:Settings.DownloadFolder = $TxtDownloadFolder.Text
+        $script:Settings.ConfirmActions = ($ChkConfirmActions.IsChecked -eq $true)
+        $script:Settings.AutoRefresh = ($ChkAutoRefresh.IsChecked -eq $true)
+        $script:Settings.Accent = [string]$CmbAccent.SelectedItem
 
-    Save-AppSettings
+        Save-AppSettings
+    } catch { }
 
-    Remove-Item -Path $script:TemporaryPath -Recurse -Force -ErrorAction SilentlyContinue
+    try {
+        Remove-Item -Path $script:TemporaryPath -Recurse -Force -ErrorAction SilentlyContinue
+    } catch { }
+})
+
+$Window.Add_Closed({
+    try { [System.Windows.Threading.Dispatcher]::CurrentDispatcher.InvokeShutdown() } catch { }
+    try { [GC]::Collect() } catch { }
+    try { [GC]::WaitForPendingFinalizers() } catch { }
+    try { [GC]::Collect() } catch { }
 })
 
 # ============================================================
