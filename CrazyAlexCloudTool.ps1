@@ -1,18 +1,46 @@
-
 <#
 .SYNOPSIS
-    CrazyAlex Cloud Suite - Ultimate WPF Edition (Final Stable Version)
+    CrazyAlex Cloud Suite - Ultimate WPF Edition (Fully Dark-Themed)
+.DESCRIPTION
+    - Auto-adds Windows Defender exclusion for $env:TEMP at startup.
+    - AV-aware error handler with clear fix instructions.
+    - Unified download / extract / run pipeline (no duplicated logic).
+    - Fully dark-themed ComboBox (readable when not hovered).
+    - Non-blocking network reset, centralized temp paths, proper cleanup.
 #>
 
+# ==========================================
 # --- AUTO-ADMIN ELEVATION ---
-$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+# ==========================================
+$principal = New-Object Security.Principal.WindowsPrincipal(
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    Start-Process powershell -ArgumentList `
+        "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     Exit
 }
 
 # ==========================================
-# --- 1. YOUR VERIFIED LINKS ---
+# --- AUTO-ADD DEFENDER EXCLUSION (TEMP) ---
+# ==========================================
+try {
+    $tempExclusion = $env:TEMP
+    $existing = @()
+    try { $existing = (Get-MpPreference -ErrorAction Stop).ExclusionPath } catch { }
+    if ($existing -notcontains $tempExclusion) {
+        Add-MpPreference -ExclusionPath $tempExclusion -ErrorAction Stop | Out-Null
+        Write-Host "[+] Defender exclusion added for: $tempExclusion" -ForegroundColor Green
+    } else {
+        Write-Host "[=] Defender exclusion already present for: $tempExclusion" -ForegroundColor DarkGray
+    }
+} catch {
+    Write-Host "[!] Could not add Defender exclusion (Tamper Protection may be ON)." -ForegroundColor Yellow
+    Write-Host "    If a tool gets blocked, add the exclusion manually or pause Real-time protection." -ForegroundColor Yellow
+}
+
+# ==========================================
+# --- CONFIGURATION / VERIFIED LINKS ---
 # ==========================================
 $Links = @{
     Winrar       = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/Winrar.zip"
@@ -25,206 +53,685 @@ $Links = @{
 }
 
 # ==========================================
-# --- 2. WPF GUI (USER INTERFACE) ---
+# --- WPF SETUP ---
 # ==========================================
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
 
+# ==========================================
+# --- SHARED DARK THEME RESOURCE STRING ---
+# Injected into both windows' <Window.Resources>
+# ==========================================
+$DarkThemeResources = @"
+        <!-- =========================================
+             SHARED DARK THEME RESOURCES
+             ========================================= -->
+
+        <!-- ComboBox toggle button (dropdown arrow area) -->
+        <ControlTemplate x:Key="ComboBoxToggleButton" TargetType="ToggleButton">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="24"/>
+                </Grid.ColumnDefinitions>
+                <Border x:Name="Border"
+                        Grid.ColumnSpan="2"
+                        Background="#2A2A30"
+                        BorderBrush="#444444"
+                        BorderThickness="1"
+                        CornerRadius="3"/>
+                <Path x:Name="Arrow"
+                      Grid.Column="1"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Data="M 0 0 L 4 4 L 8 0 Z"
+                      Fill="#00FFFF"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Border" Property="BorderBrush" Value="#00FFFF"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="Border" Property="BorderBrush" Value="#00FFFF"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- Dropdown item style -->
+        <Style x:Key="DarkComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#2A2A30"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#00B4D8"/>
+                                <Setter Property="Foreground" Value="#000000"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#005F73"/>
+                                <Setter Property="Foreground" Value="#00FFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBox main style -->
+        <Style x:Key="DarkComboBox" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#2A2A30"/>
+            <Setter Property="BorderBrush" Value="#444444"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItem}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Template="{StaticResource ComboBoxToggleButton}"
+                                          Grid.Column="2"
+                                          Focusable="false"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press"/>
+                            <ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              Margin="10,3,30,3"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"/>
+                            <TextBox x:Name="PART_EditableTextBox"
+                                     Style="{x:Null}"
+                                     HorizontalAlignment="Left"
+                                     VerticalAlignment="Center"
+                                     Margin="10,3,30,3"
+                                     Focusable="True"
+                                     Background="Transparent"
+                                     Foreground="#FFFFFF"
+                                     Visibility="Hidden"
+                                     IsReadOnly="{TemplateBinding IsReadOnly}"/>
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Grid x:Name="DropDown"
+                                      SnapsToDevicePixels="True"
+                                      MinWidth="{TemplateBinding ActualWidth}"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border x:Name="DropDownBorder"
+                                            Background="#1E1E22"
+                                            BorderThickness="1"
+                                            BorderBrush="#00FFFF"
+                                            CornerRadius="3"/>
+                                    <ScrollViewer Margin="4" SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+"@
+
+# ==========================================
+# --- MAIN WINDOW XAML ---
+# ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="CrazyAlex Cloud Suite" Height="680" Width="880" 
-        WindowStartupLocation="CenterScreen" Background="#121212" 
-        FontFamily="Segoe UI" ResizeMode="NoResize">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CrazyAlex Cloud Suite"
+        Height="720" Width="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#121212"
+        FontFamily="Segoe UI"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+$DarkThemeResources
+    </Window.Resources>
+
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="230"/>
+            <ColumnDefinition Width="240"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Background="#1E1E1E" Grid.Column="0">
-            <StackPanel Margin="15">
-                <TextBlock Text="CRAZY ALEX" Foreground="#00FFFF" FontSize="26" FontWeight="Black" Margin="0,15,0,0"/>
-                <TextBlock Text="CLOUD SUITE v7" Foreground="#AAAAAA" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,40"/>
-                
-                <TextBlock Text="SYSTEM STATUS:" Foreground="#777777" FontSize="12" Margin="0,0,0,5"/>
-                <TextBlock Name="StatusText" Text="Ready to deploy." Foreground="#00FF00" FontSize="13" TextWrapping="Wrap"/>
+        <!-- SIDEBAR -->
+        <Border Background="#1A1A1A" Grid.Column="0" CornerRadius="0,8,8,0">
+            <StackPanel Margin="18">
+                <TextBlock Text="CRAZY ALEX"
+                           Foreground="#00FFFF"
+                           FontSize="26"
+                           FontWeight="Black"
+                           Margin="0,20,0,2"/>
+                <TextBlock Text="CLOUD SUITE v8"
+                           Foreground="#888888"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,30"/>
+                <Separator Background="#333333" Margin="0,0,0,20"/>
+
+                <TextBlock Text="SYSTEM STATUS"
+                           Foreground="#555555"
+                           FontSize="11"
+                           Margin="0,0,0,8"
+                           FontWeight="SemiBold"/>
+                <TextBlock Name="StatusText"
+                           Text="Ready to deploy."
+                           Foreground="#00FF00"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           LineHeight="20"/>
+
+                <Separator Background="#333333" Margin="0,25,0,20"/>
+
+                <TextBlock Text="LAST ACTION"
+                           Foreground="#555555"
+                           FontSize="11"
+                           Margin="0,0,0,8"
+                           FontWeight="SemiBold"/>
+                <TextBlock Name="LastActionText"
+                           Text="None"
+                           Foreground="#AAAAAA"
+                           FontSize="12"
+                           TextWrapping="Wrap"/>
             </StackPanel>
         </Border>
 
-        <Grid Grid.Column="1" Margin="25">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <!-- MAIN CONTENT -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="28,20,28,20">
 
-            <TextBlock Text="OFFICE TOOLS" Foreground="#00FFFF" FontSize="18" FontWeight="Bold" Grid.Row="0" Margin="0,0,0,15"/>
-            <WrapPanel Grid.Row="1" Margin="0,0,0,25">
-                <Button Name="BtnOfficeSetup" Content="Office2019_x64_x86" Width="200" Height="45" Margin="0,0,15,15" Background="#2D2D30" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Name="BtnOfficeAct" Content="Office_16-19" Width="200" Height="45" Margin="0,0,15,15" Background="#2D2D30" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Name="BtnScrubber" Content="OfficeScrubber" Width="200" Height="45" Margin="0,0,15,15" Background="#2D2D30" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Name="BtnWinTools" Content="WinOfficeTools" Width="200" Height="45" Margin="0,0,15,15" Background="#2D2D30" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-            </WrapPanel>
+                <!-- OFFICE TOOLS -->
+                <TextBlock Text="OFFICE TOOLS"
+                           Foreground="#00FFFF"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Margin="0,0,0,12"/>
+                <WrapPanel Margin="0,0,0,28">
+                    <Button Name="BtnOfficeSetup"
+                            Content="&#x1F4BE;  Office 2019 Setup"
+                            Width="205" Height="48" Margin="0,0,12,12"
+                            Background="#2A2A30" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#444444"
+                            Cursor="Hand" FontSize="13"/>
+                    <Button Name="BtnOfficeAct"
+                            Content="&#x1F511;  Office 16-19 Act"
+                            Width="205" Height="48" Margin="0,0,12,12"
+                            Background="#2A2A30" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#444444"
+                            Cursor="Hand" FontSize="13"/>
+                    <Button Name="BtnScrubber"
+                            Content="&#x1F9F9;  Office Scrubber"
+                            Width="205" Height="48" Margin="0,0,12,12"
+                            Background="#2A2A30" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#444444"
+                            Cursor="Hand" FontSize="13"/>
+                    <Button Name="BtnWinTools"
+                            Content="&#x1F6E0;  Win Office Tools"
+                            Width="205" Height="48" Margin="0,0,12,12"
+                            Background="#2A2A30" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#444444"
+                            Cursor="Hand" FontSize="13"/>
+                </WrapPanel>
 
-            <TextBlock Text="SCRIPTS" Foreground="#00FFFF" FontSize="18" FontWeight="Bold" Grid.Row="2" Margin="0,0,0,15"/>
-            <WrapPanel Grid.Row="3" Margin="0,0,0,25">
-                <Button Name="BtnGenP" Content="GenP-main" Width="200" Height="45" Margin="0,0,15,15" Background="#5C2E7E" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Name="BtnWinrar" Content="Winrar" Width="200" Height="45" Margin="0,0,15,15" Background="#5C2E7E" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-            </WrapPanel>
+                <!-- SCRIPTS -->
+                <TextBlock Text="SCRIPTS"
+                           Foreground="#00FFFF"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Margin="0,0,0,12"/>
+                <WrapPanel Margin="0,0,0,28">
+                    <Button Name="BtnGenP"
+                            Content="&#x26A1;  GenP Activator"
+                            Width="205" Height="48" Margin="0,0,12,12"
+                            Background="#4A235A" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#7B3FA0"
+                            Cursor="Hand" FontSize="13"/>
+                    <Button Name="BtnWinrar"
+                            Content="&#x1F4E6;  WinRAR"
+                            Width="205" Height="48" Margin="0,0,12,12"
+                            Background="#4A235A" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#7B3FA0"
+                            Cursor="Hand" FontSize="13"/>
+                </WrapPanel>
 
-            <TextBlock Text="SYSTEM TOOLS" Foreground="#00FFFF" FontSize="18" FontWeight="Bold" Grid.Row="4" Margin="0,0,0,15"/>
-            <WrapPanel Grid.Row="5">
-                <Button Name="BtnUpdate" Content="System Update" Width="200" Height="45" Margin="0,0,15,15" Background="#1E5128" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Name="BtnSFC" Content="SFC Scan" Width="130" Height="45" Margin="0,0,15,15" Background="#1E5128" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Name="BtnWifi" Content="Fix Network" Width="130" Height="45" Margin="0,0,15,15" Background="#1E5128" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Name="BtnKey" Content="Show Win Key" Width="130" Height="45" Margin="0,0,15,15" Background="#1E5128" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-            </WrapPanel>
-        </Grid>
+                <!-- SYSTEM TOOLS -->
+                <TextBlock Text="SYSTEM TOOLS"
+                           Foreground="#00FFFF"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Margin="0,0,0,12"/>
+                <WrapPanel>
+                    <Button Name="BtnUpdate"
+                            Content="&#x1F504;  System Update"
+                            Width="205" Height="48" Margin="0,0,12,12"
+                            Background="#1A4A2A" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#2D7A40"
+                            Cursor="Hand" FontSize="13"/>
+                    <Button Name="BtnSFC"
+                            Content="&#x1F50D;  SFC Scan"
+                            Width="150" Height="48" Margin="0,0,12,12"
+                            Background="#1A4A2A" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#2D7A40"
+                            Cursor="Hand" FontSize="13"/>
+                    <Button Name="BtnWifi"
+                            Content="&#x1F4F6;  Fix Network"
+                            Width="150" Height="48" Margin="0,0,12,12"
+                            Background="#1A4A2A" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#2D7A40"
+                            Cursor="Hand" FontSize="13"/>
+                    <Button Name="BtnKey"
+                            Content="&#x1F5DD;  Win Key"
+                            Width="150" Height="48" Margin="0,0,12,12"
+                            Background="#1A4A2A" Foreground="#FFFFFF"
+                            BorderThickness="1" BorderBrush="#2D7A40"
+                            Cursor="Hand" FontSize="13"/>
+                </WrapPanel>
+
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>
 "@
 
-$Reader = (New-Object System.Xml.XmlNodeReader $XAML)
+$Reader = New-Object System.Xml.XmlNodeReader $XAML
 $Window = [Windows.Markup.XamlReader]::Load($Reader)
 
-$StatusText = $Window.FindName("StatusText")
-$BtnWinrar = $Window.FindName("BtnWinrar"); $BtnGenP = $Window.FindName("BtnGenP")
-$BtnScrubber = $Window.FindName("BtnScrubber"); $BtnOfficeSetup = $Window.FindName("BtnOfficeSetup")
-$BtnOfficeAct = $Window.FindName("BtnOfficeAct"); $BtnWinTools = $Window.FindName("BtnWinTools")
-$BtnUpdate = $Window.FindName("BtnUpdate")
-$BtnSFC = $Window.FindName("BtnSFC"); $BtnWifi = $Window.FindName("BtnWifi"); $BtnKey = $Window.FindName("BtnKey")
+# --- Resolve named controls ---
+$StatusText     = $Window.FindName("StatusText")
+$LastActionText = $Window.FindName("LastActionText")
+
+$BtnOfficeSetup = $Window.FindName("BtnOfficeSetup")
+$BtnOfficeAct   = $Window.FindName("BtnOfficeAct")
+$BtnScrubber    = $Window.FindName("BtnScrubber")
+$BtnWinTools    = $Window.FindName("BtnWinTools")
+$BtnGenP        = $Window.FindName("BtnGenP")
+$BtnWinrar      = $Window.FindName("BtnWinrar")
+$BtnUpdate      = $Window.FindName("BtnUpdate")
+$BtnSFC         = $Window.FindName("BtnSFC")
+$BtnWifi        = $Window.FindName("BtnWifi")
+$BtnKey         = $Window.FindName("BtnKey")
 
 # ==========================================
-# --- 3. EXECUTION FUNCTIONS ---
+# --- HELPER: STATUS UPDATER ---
 # ==========================================
-
-function Run-ScriptOrExe ($Name, $Url, $Extension) {
-    $StatusText.Text = "Downloading $Name..."; $StatusText.Foreground = "#FFFF00"
-    $TempPath = Join-Path $env:TEMP "$Name$Extension"
-    try {
-        Invoke-WebRequest -Uri $Url -OutFile $TempPath -UseBasicParsing
-        $StatusText.Text = "Running $Name..."
-        Start-Process -FilePath $TempPath -Wait
-        Remove-Item -Path $TempPath -Force -ErrorAction SilentlyContinue
-        $StatusText.Text = "$Name completed!"; $StatusText.Foreground = "#00FF00"
-    } catch { $StatusText.Text = "Error in $Name"; $StatusText.Foreground = "Red" }
+function Set-Status {
+    param(
+        [string]$Message,
+        [string]$Color = "#AAAAAA"
+    )
+    $StatusText.Text       = $Message
+    $StatusText.Foreground = $Color
+    $LastActionText.Text   = $Message
+    [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke(
+        [System.Windows.Threading.DispatcherPriority]::Background,
+        [action]{}
+    )
 }
 
-function Run-Zip ($Name, $Url, $TargetFile) {
-    $StatusText.Text = "Downloading $Name..."; $StatusText.Foreground = "#FFFF00"
-    $ZipPath = Join-Path $env:TEMP "$Name.zip"
-    $ExtractPath = Join-Path $env:TEMP "CA_$Name"
-    
-    try {
-        # Handle Google Drive Large Files
-        if ($Url -like "*drive.google.com*") {
-            $FileId = $Url.Split("id=")[1].Split("&")[0]
-            $BaseUrl = "https://docs.google.com/uc?export=download&id=$FileId"
-            $Response = Invoke-WebRequest -Uri $BaseUrl -SessionVariable "Session" -UserAgent "Mozilla/5.0" -UseBasicParsing
-            $Token = $Response.Links | Where-Object { $_.href -like "*confirm=*" } | Select-Object -ExpandProperty href
-            if ($Token) {
-                $DirectLink = "https://docs.google.com/uc?export=download&confirm=$($Token.Split('=')[-1])&id=$FileId"
-                Invoke-WebRequest -Uri $DirectLink -OutFile $ZipPath -UserAgent "Mozilla/5.0" -UseBasicParsing
-            } else {
-                Invoke-WebRequest -Uri $BaseUrl -OutFile $ZipPath -UserAgent "Mozilla/5.0" -UseBasicParsing
-            }
+# ==========================================
+# --- HELPER: AV-AWARE ERROR REPORTER ---
+# ==========================================
+function Show-ToolError {
+    param(
+        [string]$Name,
+        [object]$Exception
+    )
+    $msg = if ($Exception) { $Exception.Message } else { "Unknown error" }
+
+    if ($msg -match 'virus|potentially unwanted|Operation did not complete|threat|quarantin') {
+        Set-Status "$Name blocked by Antivirus!" "#FF4444"
+        [System.Windows.MessageBox]::Show(
+            "$Name was blocked by Windows Defender / Antivirus.`n`n" +
+            "The file was likely quarantined during extraction.`n`n" +
+            "FIX (run once in Admin PowerShell):`n" +
+            "  Add-MpPreference -ExclusionPath `"`$env:TEMP`"`n`n" +
+            "Or temporarily pause Real-time protection:`n" +
+            "  Windows Security > Virus & threat protection > Manage settings`n`n" +
+            "Detail: $msg",
+            "Antivirus Blocked", "OK", "Warning"
+        )
+    }
+    else {
+        Set-Status "Error in $Name : $msg" "#FF4444"
+        [System.Windows.MessageBox]::Show(
+            "Failed: $Name`n`n$msg",
+            "Error", "OK", "Error"
+        )
+    }
+}
+
+# ==========================================
+# --- HELPER: DOWNLOAD (handles Google Drive)
+# ==========================================
+function Invoke-Download {
+    param(
+        [string]$Url,
+        [string]$OutFile,
+        [string]$Label = "file"
+    )
+
+    Set-Status "Downloading $Label..." "#FFFF00"
+
+    if ($Url -like "*drive.google.com*") {
+        if ($Url -match '[?&]id=([^&]+)') {
+            $FileId = $Matches[1]
         } else {
-            Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
+            throw "Cannot parse Google Drive file ID from URL: $Url"
         }
 
-        $StatusText.Text = "Extracting $Name..."
-        if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
-        Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
-        
-        $ExeToRun = Get-ChildItem -Path $ExtractPath -Filter $TargetFile -Recurse | Select-Object -First 1
-        
-        if ($ExeToRun) {
-            $StatusText.Text = "Running $Name..."
-            $oldDir = Get-Location
-            Set-Location $ExeToRun.DirectoryName
-            Start-Process -FilePath $ExeToRun.FullName -Wait
-            Set-Location $oldDir
-        }
-        
-        Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
-        $StatusText.Text = "$Name completed!"; $StatusText.Foreground = "#00FF00"
-    } catch { $StatusText.Text = "Error in $Name"; $StatusText.Foreground = "Red" }
+        $BaseUrl  = "https://docs.google.com/uc?export=download&id=$FileId"
+        $Response = Invoke-WebRequest -Uri $BaseUrl `
+                        -SessionVariable "GDriveSession" `
+                        -UserAgent "Mozilla/5.0" `
+                        -UseBasicParsing
+
+        $ConfirmLink = $Response.Links |
+            Where-Object { $_.href -like "*confirm=*" } |
+            Select-Object -ExpandProperty href -First 1
+
+        $DownloadUrl = if ($ConfirmLink) {
+            if ($ConfirmLink -match 'confirm=([^&]+)') {
+                "https://docs.google.com/uc?export=download&confirm=$($Matches[1])&id=$FileId"
+            } else { $BaseUrl }
+        } else { $BaseUrl }
+
+        Invoke-WebRequest -Uri $DownloadUrl `
+            -OutFile $OutFile `
+            -UserAgent "Mozilla/5.0" `
+            -WebSession $GDriveSession `
+            -UseBasicParsing
+    }
+    else {
+        Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
+    }
 }
 
-function Run-GenP_Dynamic ($Url) {
-    $StatusText.Text = "Downloading GenP-main..."; $StatusText.Foreground = "#FFFF00"
-    $ZipPath = Join-Path $env:TEMP "GenP.zip"
-    $ExtractPath = Join-Path $env:TEMP "CA_GenP"
-    
+# ==========================================
+# --- HELPER: TEMP PATH FACTORY ---
+# ==========================================
+function Get-TempPath {
+    param([string]$Name, [string]$Extension = "")
+    return (Join-Path $env:TEMP "CA_$Name$Extension")
+}
+
+# ==========================================
+# --- CORE: Run a single downloaded file
+# ==========================================
+function Invoke-SingleFile {
+    param(
+        [string]$Name,
+        [string]$Url,
+        [string]$Extension
+    )
+
+    $TempFile = Get-TempPath -Name $Name -Extension $Extension
+
     try {
-        Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
-        $StatusText.Text = "Extracting GenP-main..."
-        if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force }
-        Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
-        
-        $ExeList = Get-ChildItem -Path "$ExtractPath\GenP-main\Releases" -Filter "*.exe" -Recurse
-        
-        if ($ExeList.Count -eq 0) {
-            [System.Windows.MessageBox]::Show("No .exe files found!", "Error")
-            return
-        }
-
-        [xml]$PickerXAML = @"
-        <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Select GenP Version" Height="250" Width="350" WindowStartupLocation="CenterScreen" Background="#1E1E1E" ResizeMode="NoResize">
-            <StackPanel Margin="20">
-                <TextBlock Text="Select Version:" Foreground="#00FFFF" Margin="0,0,0,10" FontWeight="Bold"/>
-                <ComboBox Name="ComboVersions" Height="30" Margin="0,0,0,20"/>
-                <Button Name="BtnRun" Content="Run Selected" Height="40" Background="#00B4D8" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-            </StackPanel>
-        </Window>
-"@
-        $PickerReader = (New-Object System.Xml.XmlNodeReader $PickerXAML)
-        $PickerWindow = [Windows.Markup.XamlReader]::Load($PickerReader)
-        $Combo = $PickerWindow.FindName("ComboVersions")
-        $BtnRun = $PickerWindow.FindName("BtnRun")
-        
-        foreach ($exe in $ExeList) { [void]$Combo.Items.Add($exe.Name) }
-        $Combo.SelectedIndex = 0
-        
-        $BtnRun.Add_Click({
-            $SelectedName = $Combo.SelectedItem
-            $SelectedExe = $ExeList | Where-Object Name -eq $SelectedName
-            $oldDir = Get-Location
-            Set-Location $SelectedExe.DirectoryName
-            Start-Process -FilePath $SelectedExe.FullName -Wait
-            Set-Location $oldDir
-            $PickerWindow.Close()
-        })
-        
-        $StatusText.Text = "Waiting for GenP..."
-        $PickerWindow.ShowDialog() | Out-Null
-        
-        Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
-        $StatusText.Text = "GenP finished!"; $StatusText.Foreground = "#00FF00"
-    } catch { $StatusText.Text = "Error in GenP" }
+        Invoke-Download -Url $Url -OutFile $TempFile -Label $Name
+        Set-Status "Running $Name..." "#FFFF00"
+        Start-Process -FilePath $TempFile -Wait
+        Set-Status "$Name completed successfully!" "#00FF00"
+    }
+    catch {
+        Show-ToolError -Name $Name -Exception $_.Exception
+    }
+    finally {
+        Remove-Item -Path $TempFile -Force -ErrorAction SilentlyContinue
+    }
 }
 
 # ==========================================
-# --- 4. BUTTON BINDINGS ---
+# --- CORE: Download ZIP, extract, run target
 # ==========================================
-$BtnOfficeSetup.Add_Click({ Run-Zip -Name "Office2019_x64_x86" -Url $Links.OfficeIso -TargetFile "setup.exe" })
-$BtnOfficeAct.Add_Click({ Run-ScriptOrExe -Name "Office_16-19" -Url $Links.Office16 -Extension ".exe" })
-$BtnScrubber.Add_Click({ Run-Zip -Name "OfficeScrubber" -Url $Links.Scrubber -TargetFile "OfficeScrubber.cmd" })
-$BtnWinTools.Add_Click({ Run-ScriptOrExe -Name "WinOfficeTools" -Url $Links.WinTools -Extension ".bat" })
-$BtnGenP.Add_Click({ Run-GenP_Dynamic -Url $Links.GenP })
-$BtnWinrar.Add_Click({ Run-Zip -Name "Winrar" -Url $Links.Winrar -TargetFile "Winrar.cmd" })
-$BtnUpdate.Add_Click({ Run-ScriptOrExe -Name "UpdateSystemWithPSCheck" -Url $Links.UpdateSystem -Extension ".bat" })
+function Invoke-ZipTool {
+    param(
+        [string]$Name,
+        [string]$Url,
+        [string]$TargetFile,
+        [switch]$GenPPickerMode
+    )
 
-$BtnSFC.Add_Click({ Start-Process cmd -ArgumentList "/c sfc /scannow & pause" })
-$BtnWifi.Add_Click({ ipconfig /flushdns | Out-Null; ipconfig /release | Out-Null; ipconfig /renew | Out-Null; $StatusText.Text = "Network Reset Complete!" })
-$BtnKey.Add_Click({
-    $k = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform' -ErrorAction SilentlyContinue).BackupProductKeyDefault
-    if ($k) { [System.Windows.MessageBox]::Show("Key: $k", "Product Key") } else { [System.Windows.MessageBox]::Show("No OEM/Digital Key found.", "Product Key") }
+    $ZipPath     = Get-TempPath -Name $Name -Extension ".zip"
+    $ExtractPath = Get-TempPath -Name $Name
+
+    try {
+        Invoke-Download -Url $Url -OutFile $ZipPath -Label $Name
+
+        Set-Status "Extracting $Name..." "#FFFF00"
+        if (Test-Path $ExtractPath) {
+            Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
+
+        if ($GenPPickerMode) {
+            $ReleasesPath = Join-Path $ExtractPath "GenP-main\Releases"
+            if (-not (Test-Path $ReleasesPath)) { $ReleasesPath = $ExtractPath }
+            $ExeList = @(Get-ChildItem -Path $ReleasesPath -Filter "*.exe" -Recurse)
+
+            if ($ExeList.Count -eq 0) {
+                throw "No .exe files found inside GenP archive (likely quarantined by Antivirus)."
+            }
+
+            Invoke-GenPPicker -ExeList $ExeList
+        }
+        else {
+            $FoundFile = Get-ChildItem -Path $ExtractPath `
+                             -Filter $TargetFile -Recurse |
+                             Select-Object -First 1
+
+            if (-not $FoundFile) {
+                throw "Target file '$TargetFile' not found inside '$Name' archive."
+            }
+
+            Set-Status "Running $Name..." "#FFFF00"
+            $previousDir = Get-Location
+            try {
+                Set-Location $FoundFile.DirectoryName
+                Start-Process -FilePath $FoundFile.FullName -Wait
+            }
+            finally {
+                Set-Location $previousDir
+            }
+        }
+
+        Set-Status "$Name completed successfully!" "#00FF00"
+    }
+    catch {
+        Show-ToolError -Name $Name -Exception $_.Exception
+    }
+    finally {
+        Remove-Item -Path $ZipPath     -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# ==========================================
+# --- GenP VERSION PICKER (dark themed) ---
+# ==========================================
+function Invoke-GenPPicker {
+    param([System.IO.FileInfo[]]$ExeList)
+
+    [xml]$PickerXAML = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Select GenP Version"
+        Height="260" Width="380"
+        WindowStartupLocation="CenterScreen"
+        Background="#1A1A1A"
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+$DarkThemeResources
+    </Window.Resources>
+
+    <StackPanel Margin="24">
+        <TextBlock Text="Select GenP Version to Run:"
+                   Foreground="#00FFFF"
+                   FontSize="14"
+                   FontWeight="Bold"
+                   Margin="0,0,0,16"/>
+        <ComboBox Name="ComboVersions"
+                  Style="{StaticResource DarkComboBox}"
+                  Height="36"
+                  FontSize="13"
+                  Margin="0,0,0,20"/>
+        <Button Name="BtnRun"
+                Content="&#x25B6;  Run Selected"
+                Height="42"
+                Background="#00B4D8"
+                Foreground="White"
+                BorderThickness="0"
+                Cursor="Hand"
+                FontSize="13"
+                FontWeight="SemiBold"/>
+    </StackPanel>
+</Window>
+"@
+
+    $PickerReader = New-Object System.Xml.XmlNodeReader $PickerXAML
+    $PickerWindow = [Windows.Markup.XamlReader]::Load($PickerReader)
+
+    $Combo  = $PickerWindow.FindName("ComboVersions")
+    $BtnRun = $PickerWindow.FindName("BtnRun")
+
+    foreach ($exe in $ExeList) { [void]$Combo.Items.Add($exe.Name) }
+    $Combo.SelectedIndex = 0
+
+    $BtnRun.Add_Click({
+        $selectedExe = $ExeList | Where-Object Name -eq $Combo.SelectedItem | Select-Object -First 1
+        if ($selectedExe) {
+            $previousDir = Get-Location
+            try {
+                Set-Location $selectedExe.DirectoryName
+                Start-Process -FilePath $selectedExe.FullName -Wait
+            }
+            finally {
+                Set-Location $previousDir
+            }
+        }
+        $PickerWindow.Close()
+    })
+
+    Set-Status "Waiting for GenP selection..." "#FFFF00"
+    [void]$PickerWindow.ShowDialog()
+}
+
+# ==========================================
+# --- SYSTEM TOOL: Network Reset (async) ---
+# ==========================================
+function Invoke-NetworkReset {
+    Set-Status "Resetting network..." "#FFFF00"
+    try {
+        $job = Start-Job -ScriptBlock {
+            ipconfig /flushdns | Out-Null
+            ipconfig /release  | Out-Null
+            ipconfig /renew    | Out-Null
+        }
+
+        while ($job.State -eq 'Running') {
+            [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke(
+                [System.Windows.Threading.DispatcherPriority]::Background,
+                [action]{}
+            )
+            Start-Sleep -Milliseconds 200
+        }
+        Receive-Job $job -ErrorAction SilentlyContinue | Out-Null
+        Remove-Job  $job
+
+        Set-Status "Network reset complete!" "#00FF00"
+    }
+    catch {
+        Set-Status "Network reset failed: $($_.Exception.Message)" "#FF4444"
+    }
+}
+
+# ==========================================
+# --- SYSTEM TOOL: Windows Product Key ---
+# ==========================================
+function Get-WindowsKey {
+    try {
+        $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform'
+        $key = (Get-ItemProperty -Path $regPath -ErrorAction Stop).BackupProductKeyDefault
+
+        if ($key -and $key -ne '') {
+            [System.Windows.MessageBox]::Show(
+                "Windows Product Key:`n`n$key",
+                "Product Key", "OK", "Information"
+            )
+            Set-Status "Product key retrieved." "#00FF00"
+        }
+        else {
+            [System.Windows.MessageBox]::Show(
+                "No OEM/Digital product key found in registry.`n`n" +
+                "Your license may be linked to your Microsoft account.",
+                "Product Key", "OK", "Information"
+            )
+            Set-Status "No OEM key found." "#FFAA00"
+        }
+    }
+    catch {
+        Set-Status "Error reading key: $($_.Exception.Message)" "#FF4444"
+    }
+}
+
+# ==========================================
+# --- BUTTON BINDINGS ---
+# ==========================================
+
+# Office Tools
+$BtnOfficeSetup.Add_Click({
+    Invoke-ZipTool -Name "OfficeSetup" -Url $Links.OfficeIso -TargetFile "setup.exe"
+})
+$BtnOfficeAct.Add_Click({
+    Invoke-SingleFile -Name "Office_16-19" -Url $Links.Office16 -Extension ".exe"
+})
+$BtnScrubber.Add_Click({
+    Invoke-ZipTool -Name "OfficeScrubber" -Url $Links.Scrubber -TargetFile "OfficeScrubber.cmd"
+})
+$BtnWinTools.Add_Click({
+    Invoke-SingleFile -Name "WinOfficeTools" -Url $Links.WinTools -Extension ".bat"
 })
 
-$Window.ShowDialog() | Out-Null
+# Scripts
+$BtnGenP.Add_Click({
+    Invoke-ZipTool -Name "GenP" -Url $Links.GenP -TargetFile "*.exe" -GenPPickerMode
+})
+$BtnWinrar.Add_Click({
+    Invoke-ZipTool -Name "Winrar" -Url $Links.Winrar -TargetFile "Winrar.cmd"
+})
+
+# System Tools
+$BtnUpdate.Add_Click({
+    Invoke-SingleFile -Name "SystemUpdate" -Url $Links.UpdateSystem -Extension ".bat"
+})
+$BtnSFC.Add_Click({
+    Set-Status "Running SFC scan (this may take several minutes)..." "#FFFF00"
+    Start-Process cmd -ArgumentList "/c sfc /scannow & pause" -Wait
+    Set-Status "SFC scan launched." "#00FF00"
+})
+$BtnWifi.Add_Click({ Invoke-NetworkReset })
+$BtnKey.Add_Click({ Get-WindowsKey })
+
+# ==========================================
+# --- LAUNCH ---
+# ==========================================
+[void]$Window.ShowDialog()
