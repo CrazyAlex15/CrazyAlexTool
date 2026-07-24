@@ -1971,7 +1971,7 @@ $BtnWinTools.Add_Click({
         -Extension ".bat"
 })
 
-$BtnWinrar.Add_Click({ Install-WinRAR })
+$BtnWinrar.Add_Click({ Activate-WinRAR })
 
 $BtnUpdate.Add_Click({
     Invoke-SingleFileTool `
