@@ -6,9 +6,11 @@
 
 .DESCRIPTION
     Windows utility and maintenance tool with:
-    - Office setup and maintenance tools
-    - WinRAR tool
-    - System update tool
+    - Office setup (via Microsoft Office Deployment Tool)
+    - Office Scrubber
+    - Win Office Tools
+    - WinRAR
+    - System Update
     - Download progress
     - System information dashboard
     - SFC scan
@@ -73,8 +75,13 @@ if (-not (Test-IsAdministrator)) {
                 throw "The remote script was empty."
             }
 
-            if ($remoteCode -match "(?is)<html\b|<head\b|<body\b") {
-                throw "The remote URL returned HTML instead of PowerShell."
+            $trimmed = $remoteCode.TrimStart()
+
+            if (
+                $trimmed -match '^<!DOCTYPE\s+html' -or
+                $trimmed -match '^<html\b'
+            ) {
+                throw "The remote URL returned an HTML page instead of PowerShell."
             }
 
             $utf8 = New-Object System.Text.UTF8Encoding($false)
