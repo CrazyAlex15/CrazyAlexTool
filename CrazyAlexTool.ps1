@@ -583,11 +583,11 @@ Load-AppSettings
                                     Tag="office windows tools"/>
 
                             <Button Name="BtnWinrar"
-                                    Content="WinRAR"
+                                    Content="Activate WinRAR"
                                     Width="205"
                                     Height="48"
                                     Style="{StaticResource ToolButton}"
-                                    Tag="winrar archive compression"/>
+                                    Tag="winrar activate license key"/>
                         </WrapPanel>
 
                         <TextBlock Name="HdrScripts"
