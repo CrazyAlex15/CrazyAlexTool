@@ -30,8 +30,35 @@
 # VERSION MARKER
 # ============================================================
 
-$script:AppVersion = "1.2.0"
+$script:AppVersion = "1.2.1"
 Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
+
+# ============================================================
+# CLEAN SLATE (safe to re-run in the same PowerShell session)
+# ============================================================
+
+$leftoverVars = @(
+    "AppName", "AppDataPath", "SettingsPath", "TemporaryPath",
+    "DefaultDownloadFolder", "Links", "AccentMap",
+    "DefaultSettings", "Settings", "InfoTimer",
+    "SearchableControls", "PickerResult", "LabelPickerResult",
+    "RemoteScriptUrl"
+)
+
+foreach ($v in $leftoverVars) {
+    if (Get-Variable -Name $v -Scope Script -ErrorAction SilentlyContinue) {
+        Remove-Variable -Name $v -Scope Script -Force -ErrorAction SilentlyContinue
+    }
+}
+
+if (Get-Variable -Name "Window" -Scope Script -ErrorAction SilentlyContinue) {
+    try { $Window.Close() } catch { }
+    Remove-Variable -Name "Window" -Scope Script -Force -ErrorAction SilentlyContinue
+}
+
+[GC]::Collect()
+[GC]::WaitForPendingFinalizers()
+[GC]::Collect()
 
 # ============================================================
 # REMOTE EXECUTION / ADMINISTRATOR BOOTSTRAP
@@ -795,6 +822,11 @@ $SubtitleText.Text = "Windows utility and maintenance tools - v$script:AppVersio
 
 function New-Brush {
     param([string]$Color)
+
+    if ([string]::IsNullOrWhiteSpace($Color)) {
+        $Color = "#FFFFFF"
+    }
+
     $converter = New-Object System.Windows.Media.BrushConverter
     return $converter.ConvertFromString($Color)
 }
@@ -1415,7 +1447,6 @@ function Invoke-GenP {
         Set-Status "Extracting GenP..." "#FFFF00"
         Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
-        # Look inside the standard GenP-main\Releases folder first
         $releasesPath = Join-Path $extractPath "GenP-main\Releases"
 
         if (-not (Test-Path $releasesPath)) {
@@ -1465,9 +1496,6 @@ function Invoke-GenP {
 
 function Invoke-OfficeScrubber {
     try {
-        # Options offered by Office Scrubber v12.
-        # Each entry maps a friendly name to the keystroke
-        # the .cmd expects when its menu is shown.
         $scrubberOptions = @(
             [pscustomobject]@{ Label = "Scrub ALL";               Key = "1" }
             [pscustomobject]@{ Label = "Scrub Office C2R (*)";    Key = "2" }
@@ -1541,8 +1569,6 @@ function Invoke-OfficeScrubber {
         $workingDir = $scrubberCmd.DirectoryName
         $cmdPath = $scrubberCmd.FullName
 
-        # Pipe the chosen keystroke plus '0' (exit) into the .cmd.
-        # The .cmd sees this on its 'set /p' prompt and runs the action.
         $wrapper = "/d /c ""pushd """"$workingDir"""" && (echo $($selected.Key)& echo 0) | """"$cmdPath"""" & echo. & echo [Finished] & pause"""
 
         Start-Process `
@@ -1730,7 +1756,6 @@ function Update-SystemInformation {
 
         $uptime = (Get-Date) - $os.LastBootUpTime
 
-        # --- Build drive list ---
         $partitionToDisk = @{}
         try {
             $physicalDisks = Get-CimInstance Win32_DiskDrive -ErrorAction Stop
@@ -2042,11 +2067,20 @@ function Show-WindowsProductKey {
 function Apply-AccentColor {
     $accentName = [string]$CmbAccent.SelectedItem
 
-    if (-not $script:AccentMap.Contains($accentName)) {
+    if (
+        [string]::IsNullOrWhiteSpace($accentName) -or
+        -not $script:AccentMap.Contains($accentName)
+    ) {
         $accentName = "Cyan"
     }
 
-    $brush = New-Brush $script:AccentMap[$accentName]
+    $colorHex = $script:AccentMap[$accentName]
+
+    if ([string]::IsNullOrWhiteSpace($colorHex)) {
+        $colorHex = "#00FFFF"
+    }
+
+    $brush = New-Brush $colorHex
 
     $script:Settings.Accent = $accentName
 
@@ -2064,7 +2098,9 @@ function Apply-AccentColor {
         }
     }
 
-    $MainProgress.Foreground = $brush
+    if ($MainProgress) {
+        $MainProgress.Foreground = $brush
+    }
 }
 
 function Save-SettingsFromUI {
@@ -2157,17 +2193,30 @@ function Filter-Tools {
 }
 
 # ============================================================
-# INITIALIZATION
+# INITIALIZATION (defensive against corrupted settings)
 # ============================================================
 
 foreach ($accentName in $script:AccentMap.Keys) {
     [void]$CmbAccent.Items.Add($accentName)
 }
 
-$TxtDownloadFolder.Text = $script:Settings.DownloadFolder
-$ChkConfirmActions.IsChecked = $script:Settings.ConfirmActions
-$ChkAutoRefresh.IsChecked = $script:Settings.AutoRefresh
-$CmbAccent.SelectedItem = $script:Settings.Accent
+$folder = $script:Settings.DownloadFolder
+if ([string]::IsNullOrWhiteSpace($folder)) {
+    $folder = $script:DefaultSettings.DownloadFolder
+}
+$TxtDownloadFolder.Text = [string]$folder
+
+$ChkConfirmActions.IsChecked = [bool]$script:Settings.ConfirmActions
+$ChkAutoRefresh.IsChecked = [bool]$script:Settings.AutoRefresh
+
+$accentToSelect = $script:Settings.Accent
+if (
+    [string]::IsNullOrWhiteSpace($accentToSelect) -or
+    -not $script:AccentMap.Contains($accentToSelect)
+) {
+    $accentToSelect = "Cyan"
+}
+$CmbAccent.SelectedItem = $accentToSelect
 
 Apply-AccentColor
 Update-SystemInformation
