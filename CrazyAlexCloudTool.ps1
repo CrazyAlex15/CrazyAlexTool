@@ -5,7 +5,7 @@
     CrazyAlexTool
 
 .DESCRIPTION
-    Windows utility tool with:
+    Windows utility and maintenance tool with:
     - Office setup and maintenance tools
     - WinRAR tool
     - System update tool
@@ -13,7 +13,7 @@
     - System information dashboard
     - SFC scan
     - Network reset
-    - Wi-Fi profile/password export
+    - Wi-Fi profile / password export
     - Windows product-key lookup
     - Search bar
     - Settings panel
@@ -24,14 +24,20 @@
 #>
 
 # ============================================================
+# VERSION MARKER
+# ============================================================
+
+$script:AppVersion = "1.0.0"
+Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
+
+# ============================================================
 # REMOTE EXECUTION / ADMINISTRATOR BOOTSTRAP
 # Supports:
 #   .\CrazyAlexTool.ps1
 #   irm https://crazyalex15.github.io/win | iex
 # ============================================================
 
-$script:RemoteScriptUrl = "https://crazyalex15.github.io/win"
-$script:CurrentScriptPath = $PSCommandPath
+$script:RemoteScriptUrl = "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/CrazyAlexTool.ps1"
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -46,9 +52,8 @@ if (-not (Test-IsAdministrator)) {
     $temporaryScript = $null
 
     try {
-        $scriptPath = $script:CurrentScriptPath
+        $scriptPath = $PSCommandPath
 
-        # When executed using irm | iex, PSCommandPath is empty.
         if (
             [string]::IsNullOrWhiteSpace($scriptPath) -or
             -not (Test-Path -LiteralPath $scriptPath)
@@ -62,14 +67,14 @@ if (-not (Test-IsAdministrator)) {
                 -UseBasicParsing `
                 -ErrorAction Stop
 
-            $remoteCode = $remoteResponse.Content
+            $remoteCode = [string]$remoteResponse.Content
 
             if ([string]::IsNullOrWhiteSpace($remoteCode)) {
                 throw "The remote script was empty."
             }
 
             if ($remoteCode -match "(?is)<html\b|<head\b|<body\b") {
-                throw "The remote URL returned HTML instead of PowerShell code."
+                throw "The remote URL returned HTML instead of PowerShell."
             }
 
             $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -83,15 +88,13 @@ if (-not (Test-IsAdministrator)) {
             $scriptPath = $temporaryScript
         }
 
-        $powershellPath = Join-Path `
-            $PSHOME `
-            "powershell.exe"
+        $powershellPath = Join-Path $PSHOME "powershell.exe"
 
         if (-not (Test-Path $powershellPath)) {
             $powershellPath = "powershell.exe"
         }
 
-        $argumentString = @(
+        $arguments = @(
             "-NoProfile"
             "-ExecutionPolicy"
             "Bypass"
@@ -101,7 +104,7 @@ if (-not (Test-IsAdministrator)) {
 
         Start-Process `
             -FilePath $powershellPath `
-            -ArgumentList $argumentString `
+            -ArgumentList $arguments `
             -Verb RunAs `
             -Wait `
             -ErrorAction Stop | Out-Null
@@ -160,11 +163,10 @@ $script:DefaultDownloadFolder = Join-Path `
     "Downloads\CrazyAlexTool"
 
 $script:Links = [ordered]@{
-    OfficeSetup = "https://drive.google.com/uc?export=download&confirm=t&id=15zkq2ieVA4IAnoSrY-oBHNE_Qzq6yN_E"
-    Scrubber    = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/OfficeScrubber.zip"
-    WinTools    = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat"
-    Winrar      = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/Winrar.zip"
-    Update      = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat"
+    Scrubber = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/OfficeScrubber.zip"
+    WinTools = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat"
+    Winrar   = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/Winrar.zip"
+    Update   = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat"
 }
 
 $script:AccentMap = [ordered]@{
@@ -222,26 +224,19 @@ function Load-AppSettings {
                 ConvertFrom-Json
 
             if ($saved.DownloadFolder) {
-                $script:Settings.DownloadFolder =
-                    [string]$saved.DownloadFolder
+                $script:Settings.DownloadFolder = [string]$saved.DownloadFolder
             }
 
             if ($null -ne $saved.ConfirmActions) {
-                $script:Settings.ConfirmActions =
-                    [bool]$saved.ConfirmActions
+                $script:Settings.ConfirmActions = [bool]$saved.ConfirmActions
             }
 
             if ($null -ne $saved.AutoRefresh) {
-                $script:Settings.AutoRefresh =
-                    [bool]$saved.AutoRefresh
+                $script:Settings.AutoRefresh = [bool]$saved.AutoRefresh
             }
 
-            if (
-                $saved.Accent -and
-                $script:AccentMap.Contains($saved.Accent)
-            ) {
-                $script:Settings.Accent =
-                    [string]$saved.Accent
+            if ($saved.Accent -and $script:AccentMap.Contains($saved.Accent)) {
+                $script:Settings.Accent = [string]$saved.Accent
             }
         }
         catch {
@@ -285,42 +280,29 @@ Load-AppSettings
 
     <Window.Resources>
 
-        <!-- Dark ComboBox item -->
-        <Style x:Key="DarkComboItem"
-               TargetType="{x:Type ComboBoxItem}">
-
+        <Style x:Key="DarkComboItem" TargetType="{x:Type ComboBoxItem}">
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="Background" Value="#25252B"/>
             <Setter Property="Padding" Value="10,8"/>
-
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ComboBoxItem}">
                         <Border x:Name="ItemBorder"
                                 Background="{TemplateBinding Background}"
                                 Padding="{TemplateBinding Padding}">
-
                             <ContentPresenter
                                 Content="{TemplateBinding Content}"
                                 ContentTemplate="{TemplateBinding ContentTemplate}"
                                 TextElement.Foreground="{TemplateBinding Foreground}"/>
                         </Border>
-
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder"
-                                        Property="Background"
-                                        Value="#005F73"/>
-                                <Setter Property="Foreground"
-                                        Value="#FFFFFF"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#005F73"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
-
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder"
-                                        Property="Background"
-                                        Value="#174A5A"/>
-                                <Setter Property="Foreground"
-                                        Value="#00FFFF"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#174A5A"/>
+                                <Setter Property="Foreground" Value="#00FFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -328,15 +310,10 @@ Load-AppSettings
             </Setter>
         </Style>
 
-        <!-- Dark ComboBox -->
-        <Style x:Key="DarkComboBox"
-               TargetType="{x:Type ComboBox}">
-
+        <Style x:Key="DarkComboBox" TargetType="{x:Type ComboBox}">
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="Background" Value="#25252B"/>
-            <Setter Property="ItemContainerStyle"
-                    Value="{StaticResource DarkComboItem}"/>
-
+            <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboItem}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ComboBox}">
@@ -347,16 +324,13 @@ Load-AppSettings
                                           IsChecked="{Binding IsDropDownOpen,
                                             RelativeSource={RelativeSource TemplatedParent},
                                             Mode=TwoWay}">
-
                                 <ToggleButton.Template>
-                                    <ControlTemplate
-                                        TargetType="{x:Type ToggleButton}">
+                                    <ControlTemplate TargetType="{x:Type ToggleButton}">
                                         <Border x:Name="ToggleBorder"
                                                 Background="#25252B"
                                                 BorderBrush="#444444"
                                                 BorderThickness="1"
                                                 CornerRadius="4">
-
                                             <Grid>
                                                 <Path Data="M 0 0 L 5 5 L 10 0 Z"
                                                       Fill="#FFFFFF"
@@ -365,20 +339,12 @@ Load-AppSettings
                                                       Margin="0,0,12,0"/>
                                             </Grid>
                                         </Border>
-
                                         <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver"
-                                                     Value="True">
-                                                <Setter TargetName="ToggleBorder"
-                                                        Property="BorderBrush"
-                                                        Value="#00FFFF"/>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="#00FFFF"/>
                                             </Trigger>
-
-                                            <Trigger Property="IsChecked"
-                                                     Value="True">
-                                                <Setter TargetName="ToggleBorder"
-                                                        Property="BorderBrush"
-                                                        Value="#00FFFF"/>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="#00FFFF"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -399,13 +365,11 @@ Load-AppSettings
                                    AllowsTransparency="True"
                                    Focusable="False"
                                    IsOpen="{TemplateBinding IsDropDownOpen}">
-
                                 <Border Background="#1E1E22"
                                         BorderBrush="#00FFFF"
                                         BorderThickness="1"
                                         CornerRadius="4"
                                         MinWidth="{TemplateBinding ActualWidth}">
-
                                     <ScrollViewer MaxHeight="260">
                                         <ItemsPresenter/>
                                     </ScrollViewer>
@@ -417,10 +381,7 @@ Load-AppSettings
             </Setter>
         </Style>
 
-        <!-- Dark buttons -->
-        <Style x:Key="ToolButton"
-               TargetType="{x:Type Button}">
-
+        <Style x:Key="ToolButton" TargetType="{x:Type Button}">
             <Setter Property="Background" Value="#2A2A30"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="#444444"/>
@@ -428,7 +389,6 @@ Load-AppSettings
             <Setter Property="Padding" Value="12,8"/>
             <Setter Property="Margin" Value="0,0,10,10"/>
             <Setter Property="Cursor" Value="Hand"/>
-
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
@@ -438,27 +398,18 @@ Load-AppSettings
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="4"
                                 Padding="{TemplateBinding Padding}">
-
                             <ContentPresenter
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 TextElement.Foreground="{TemplateBinding Foreground}"/>
                         </Border>
-
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder"
-                                        Property="Background"
-                                        Value="#35353D"/>
-                                <Setter TargetName="ButtonBorder"
-                                        Property="BorderBrush"
-                                        Value="#00FFFF"/>
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#35353D"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#00FFFF"/>
                             </Trigger>
-
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder"
-                                        Property="Background"
-                                        Value="#174A5A"/>
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#174A5A"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -494,10 +445,7 @@ Load-AppSettings
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- HEADER -->
-        <Grid Grid.Row="0"
-              Margin="22,18,22,10">
-
+        <Grid Grid.Row="0" Margin="22,18,22,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="330"/>
@@ -509,8 +457,8 @@ Load-AppSettings
                            Foreground="#00FFFF"
                            FontSize="27"
                            FontWeight="Bold"/>
-
-                <TextBlock Text="Windows utility and maintenance tools"
+                <TextBlock Name="SubtitleText"
+                           Text="Windows utility and maintenance tools"
                            Foreground="#888888"
                            FontSize="12"
                            Margin="0,2,0,0"/>
@@ -523,14 +471,12 @@ Load-AppSettings
                      ToolTip="Search tools"/>
         </Grid>
 
-        <!-- TABS -->
         <TabControl Name="MainTabs"
                     Grid.Row="1"
                     Margin="18,0,18,10"
                     Background="#121212"
                     BorderBrush="#333333">
 
-            <!-- DASHBOARD -->
             <TabItem Header="Dashboard">
                 <Grid Margin="18">
                     <Grid.ColumnDefinitions>
@@ -545,7 +491,6 @@ Load-AppSettings
                             CornerRadius="6"
                             Padding="18"
                             Margin="0,0,15,0">
-
                         <StackPanel>
                             <TextBlock Name="HdrSystemInfo"
                                        Text="SYSTEM INFORMATION"
@@ -609,7 +554,6 @@ Load-AppSettings
                                 CornerRadius="5"
                                 Padding="14"
                                 Margin="0,15,0,0">
-
                             <TextBlock Text="Wi-Fi exports contain sensitive information. Protect or delete the exported file when finished."
                                        Foreground="#E6C875"
                                        TextWrapping="Wrap"
@@ -619,11 +563,9 @@ Load-AppSettings
                 </Grid>
             </TabItem>
 
-            <!-- OFFICE TOOLS -->
             <TabItem Header="Office Tools">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="18">
-
                         <TextBlock Name="HdrOffice"
                                    Text="OFFICE TOOLS"
                                    Foreground="#00FFFF"
@@ -632,12 +574,12 @@ Load-AppSettings
                                    Margin="0,0,0,15"/>
 
                         <WrapPanel>
-                            <Button Name="BtnOfficeSetup"
-                                    Content="Office Setup"
+                            <Button Name="BtnOfficeODT"
+                                    Content="Install Office (ODT)"
                                     Width="205"
                                     Height="48"
                                     Style="{StaticResource ToolButton}"
-                                    Tag="office setup installer microsoft"/>
+                                    Tag="office setup installer microsoft odt"/>
 
                             <Button Name="BtnScrubber"
                                     Content="Office Scrubber"
@@ -683,8 +625,7 @@ Load-AppSettings
                                 CornerRadius="5"
                                 Padding="14"
                                 Margin="0,20,0,0">
-
-                            <TextBlock Text="Only run scripts and installers from sources you trust. Downloaded files are stored temporarily and removed after execution."
+                            <TextBlock Text="Only run tools from sources you trust. Downloaded files are stored temporarily and removed after execution."
                                        Foreground="#E6C875"
                                        TextWrapping="Wrap"
                                        FontSize="12"/>
@@ -693,31 +634,6 @@ Load-AppSettings
                 </ScrollViewer>
             </TabItem>
 
-            <!-- SYSTEM TOOLS -->
-            <TabItem Header="System Tools">
-                <StackPanel Margin="18">
-
-                    <TextBlock Name="HdrSystemTools"
-                               Text="SYSTEM TOOLS"
-                               Foreground="#00FFFF"
-                               FontSize="17"
-                               FontWeight="Bold"
-                               Margin="0,0,0,15"/>
-
-                    <TextBlock Text="Use the Dashboard for system information, SFC, network repair, Wi-Fi export, and product-key tools."
-                               Foreground="#AAAAAA"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,15"/>
-
-                    <Button Content="Open Dashboard"
-                            Width="170"
-                            HorizontalAlignment="Left"
-                            Style="{StaticResource ToolButton}"
-                            Tag="dashboard system information tools"/>
-                </StackPanel>
-            </TabItem>
-
-            <!-- SETTINGS -->
             <TabItem Header="Settings">
                 <Grid Margin="18">
                     <Grid.RowDefinitions>
@@ -801,7 +717,6 @@ Load-AppSettings
             </TabItem>
         </TabControl>
 
-        <!-- STATUS BAR -->
         <Border Grid.Row="2"
                 Background="#1A1A1A"
                 BorderBrush="#333333"
@@ -850,6 +765,7 @@ $Window = [Windows.Markup.XamlReader]::Load($Reader)
 # ============================================================
 
 $TitleText          = $Window.FindName("TitleText")
+$SubtitleText       = $Window.FindName("SubtitleText")
 $TxtSearch          = $Window.FindName("TxtSearch")
 $MainTabs           = $Window.FindName("MainTabs")
 
@@ -864,7 +780,7 @@ $BtnWifi            = $Window.FindName("BtnWifi")
 $BtnExportWifi      = $Window.FindName("BtnExportWifi")
 $BtnKey             = $Window.FindName("BtnKey")
 
-$BtnOfficeSetup     = $Window.FindName("BtnOfficeSetup")
+$BtnOfficeODT       = $Window.FindName("BtnOfficeODT")
 $BtnScrubber        = $Window.FindName("BtnScrubber")
 $BtnWinTools        = $Window.FindName("BtnWinTools")
 $BtnWinrar          = $Window.FindName("BtnWinrar")
@@ -877,6 +793,9 @@ $ChkAutoRefresh     = $Window.FindName("ChkAutoRefresh")
 $CmbAccent          = $Window.FindName("CmbAccent")
 $BtnSaveSettings    = $Window.FindName("BtnSaveSettings")
 $BtnResetSettings   = $Window.FindName("BtnResetSettings")
+
+$Window.Title = "CrazyAlexTool $script:AppVersion"
+$SubtitleText.Text = "Windows utility and maintenance tools - v$script:AppVersion"
 
 # ============================================================
 # UI HELPERS
@@ -970,101 +889,32 @@ function Confirm-Action {
         [System.Windows.MessageBoxImage]::Warning
     )
 
-    return (
-        $result -eq
-        [System.Windows.MessageBoxResult]::Yes
-    )
+    return ($result -eq [System.Windows.MessageBoxResult]::Yes)
 }
 
 # ============================================================
 # DOWNLOAD FUNCTIONS
 # ============================================================
 
-function Resolve-DownloadUrl {
-    param([string]$Url)
-
-    if ($Url -notlike "*drive.google.com*") {
-        return [pscustomobject]@{
-            Url     = $Url
-            Session = $null
-        }
-    }
-
-    if ($Url -notmatch '[?&]id=([^&]+)') {
-        throw "Could not read the Google Drive file ID."
-    }
-
-    $fileId = $Matches[1]
-
-    $session = New-Object `
-        Microsoft.PowerShell.Commands.WebRequestSession
-
-    $baseUrl =
-        "https://docs.google.com/uc?export=download&id=$fileId"
-
-    $response = Invoke-WebRequest `
-        -Uri $baseUrl `
-        -WebSession $session `
-        -UserAgent "Mozilla/5.0" `
-        -UseBasicParsing `
-        -ErrorAction Stop
-
-    $html = [string]$response.Content
-    $token = $null
-
-    $tokenMatch = [regex]::Match(
-        $html,
-        'confirm=([0-9A-Za-z_-]+)'
-    )
-
-    if ($tokenMatch.Success) {
-        $token = $tokenMatch.Groups[1].Value
-    }
-
-    if ($token) {
-        $downloadUrl =
-            "https://docs.google.com/uc?export=download" +
-            "&confirm=$token&id=$fileId"
-    }
-    else {
-        $downloadUrl = $baseUrl
-    }
-
-    return [pscustomobject]@{
-        Url     = $downloadUrl
-        Session = $session
-    }
-}
-
 function Invoke-TrackedDownload {
     param(
         [string]$Url,
-        [string]$OutputFile,
-        [object]$WebSession = $null
+        [string]$OutputFile
     )
 
     if ($Url -notmatch '^https://') {
         throw "Only HTTPS downloads are allowed."
     }
 
-    $parent = Split-Path `
-        -Path $OutputFile `
-        -Parent
+    $parent = Split-Path -Path $OutputFile -Parent
 
     if (-not (Test-Path $parent)) {
-        New-Item `
-            -Path $parent `
-            -ItemType Directory `
-            -Force | Out-Null
+        New-Item -Path $parent -ItemType Directory -Force | Out-Null
     }
 
     $request = [System.Net.HttpWebRequest]::Create($Url)
     $request.UserAgent = "CrazyAlexTool"
     $request.AllowAutoRedirect = $true
-
-    if ($WebSession -and $WebSession.Cookies) {
-        $request.CookieContainer = $WebSession.Cookies
-    }
 
     $response = $null
     $inputStream = $null
@@ -1088,45 +938,24 @@ function Invoke-TrackedDownload {
             Set-Progress -Percent 0 -Text "0%"
         }
         else {
-            Set-Progress `
-                -Indeterminate `
-                -Text "Downloading"
+            Set-Progress -Indeterminate -Text "Downloading"
         }
 
         while ($true) {
-            $read = $inputStream.Read(
-                $buffer,
-                0,
-                $buffer.Length
-            )
+            $read = $inputStream.Read($buffer, 0, $buffer.Length)
 
             if ($read -le 0) {
                 break
             }
 
-            $outputStream.Write(
-                $buffer,
-                0,
-                $read
-            )
-
+            $outputStream.Write($buffer, 0, $read)
             $downloadedBytes += $read
 
             if ($totalBytes -gt 0) {
-                $percent =
-                    ($downloadedBytes / $totalBytes) * 100
+                $percent = ($downloadedBytes / $totalBytes) * 100
 
-                $downloadedMb =
-                    [Math]::Round(
-                        $downloadedBytes / 1MB,
-                        1
-                    )
-
-                $totalMb =
-                    [Math]::Round(
-                        $totalBytes / 1MB,
-                        1
-                    )
+                $downloadedMb = [Math]::Round($downloadedBytes / 1MB, 1)
+                $totalMb = [Math]::Round($totalBytes / 1MB, 1)
 
                 Set-Progress `
                     -Percent $percent `
@@ -1136,9 +965,7 @@ function Invoke-TrackedDownload {
             Pump-UI
         }
 
-        Set-Progress `
-            -Percent 100 `
-            -Text "Complete"
+        Set-Progress -Percent 100 -Text "Complete"
     }
     catch {
         Remove-Item `
@@ -1170,10 +997,7 @@ function Start-DownloadedFile {
         throw "Downloaded file was not found: $Path"
     }
 
-    $directory = Split-Path `
-        -Path $Path `
-        -Parent
-
+    $directory = Split-Path -Path $Path -Parent
     $extension = [IO.Path]::GetExtension($Path).ToLowerInvariant()
 
     if ($extension -in @(".bat", ".cmd")) {
@@ -1213,12 +1037,9 @@ function Invoke-SingleFileTool {
     try {
         Set-Status "Downloading $Name..." "#FFFF00"
 
-        $resolved = Resolve-DownloadUrl -Url $Url
-
         Invoke-TrackedDownload `
-            -Url $resolved.Url `
-            -OutputFile $filePath `
-            -WebSession $resolved.Session
+            -Url $Url `
+            -OutputFile $filePath
 
         Set-Status "Running $Name..." "#FFFF00"
         Start-DownloadedFile -Path $filePath
@@ -1227,9 +1048,7 @@ function Invoke-SingleFileTool {
         Set-Progress -Percent 100 -Text "Complete"
     }
     catch {
-        Show-ToolError `
-            -Name $Name `
-            -Exception $_
+        Show-ToolError -Name $Name -Exception $_
     }
     finally {
         Remove-Item `
@@ -1246,13 +1065,8 @@ function Invoke-ZipTool {
         [string]$TargetFile
     )
 
-    $zipPath = Join-Path `
-        $script:TemporaryPath `
-        "$Name.zip"
-
-    $extractPath = Join-Path `
-        $script:TemporaryPath `
-        "Extracted-$Name"
+    $zipPath = Join-Path $script:TemporaryPath "$Name.zip"
+    $extractPath = Join-Path $script:TemporaryPath "Extracted-$Name"
 
     try {
         if (Test-Path $extractPath) {
@@ -1263,19 +1077,11 @@ function Invoke-ZipTool {
                 -ErrorAction SilentlyContinue
         }
 
-        New-Item `
-            -Path $extractPath `
-            -ItemType Directory `
-            -Force | Out-Null
+        New-Item -Path $extractPath -ItemType Directory -Force | Out-Null
 
         Set-Status "Downloading $Name..." "#FFFF00"
 
-        $resolved = Resolve-DownloadUrl -Url $Url
-
-        Invoke-TrackedDownload `
-            -Url $resolved.Url `
-            -OutputFile $zipPath `
-            -WebSession $resolved.Session
+        Invoke-TrackedDownload -Url $Url -OutputFile $zipPath
 
         Set-Status "Extracting $Name..." "#FFFF00"
 
@@ -1303,9 +1109,7 @@ function Invoke-ZipTool {
         Set-Progress -Percent 100 -Text "Complete"
     }
     catch {
-        Show-ToolError `
-            -Name $Name `
-            -Exception $_
+        Show-ToolError -Name $Name -Exception $_
     }
     finally {
         Remove-Item `
@@ -1322,50 +1126,103 @@ function Invoke-ZipTool {
 }
 
 # ============================================================
+# OFFICE DEPLOYMENT TOOL (Official Microsoft)
+# ============================================================
+
+function Install-OfficeODT {
+    try {
+        if (-not (Confirm-Action `
+            "Download the official Microsoft Office Deployment Tool and start setup?" `
+            "Install Office")) {
+            return
+        }
+
+        $odtFolder = Join-Path $script:TemporaryPath "ODT"
+
+        if (Test-Path $odtFolder) {
+            Remove-Item `
+                -Path $odtFolder `
+                -Recurse `
+                -Force `
+                -ErrorAction SilentlyContinue
+        }
+
+        New-Item -Path $odtFolder -ItemType Directory -Force | Out-Null
+
+        $odtUrl = "https://download.microsoft.com/download/2/7/A/27AF1BE6-DD20-4CB4-B154-EBAB8A7D4A7E/officedeploymenttool_18227-20162.exe"
+        $odtExe = Join-Path $odtFolder "ODT.exe"
+
+        Set-Status "Downloading Office Deployment Tool..." "#FFFF00"
+        Invoke-TrackedDownload -Url $odtUrl -OutputFile $odtExe
+
+        Set-Status "Extracting Office Deployment Tool..." "#FFFF00"
+
+        $extractProcess = Start-Process `
+            -FilePath $odtExe `
+            -ArgumentList "/extract:`"$odtFolder`" /quiet" `
+            -Wait `
+            -PassThru
+
+        if ($extractProcess.ExitCode -ne 0) {
+            throw "Failed to extract the Office Deployment Tool."
+        }
+
+        $configXml = @"
+<Configuration>
+  <Add OfficeClientEdition="64" Channel="Current">
+    <Product ID="O365ProPlusRetail">
+      <Language ID="en-us"/>
+      <ExcludeApp ID="Groove"/>
+      <ExcludeApp ID="Lync"/>
+    </Product>
+  </Add>
+  <Display Level="Full" AcceptEULA="TRUE"/>
+</Configuration>
+"@
+
+        $configPath = Join-Path $odtFolder "config.xml"
+        Set-Content -Path $configPath -Value $configXml -Encoding UTF8
+
+        $setupExe = Join-Path $odtFolder "setup.exe"
+
+        if (-not (Test-Path $setupExe)) {
+            throw "setup.exe was not found after extraction."
+        }
+
+        Set-Status "Launching Office installer..." "#FFFF00"
+
+        Start-Process `
+            -FilePath $setupExe `
+            -ArgumentList "/configure `"$configPath`"" `
+            -Wait
+
+        Set-Status "Office setup finished." "#00FF00"
+    }
+    catch {
+        Show-ToolError -Name "Office (ODT)" -Exception $_
+    }
+}
+
+# ============================================================
 # SYSTEM INFORMATION
 # ============================================================
 
 function Update-SystemInformation {
     try {
-        Set-Status `
-            "Reading system information..." `
-            "#FFFF00"
+        Set-Status "Reading system information..." "#FFFF00"
 
         $os = Get-CimInstance Win32_OperatingSystem
-        $cpu = Get-CimInstance Win32_Processor |
-            Select-Object -First 1
-
+        $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
         $computer = Get-CimInstance Win32_ComputerSystem
-        $disk = Get-CimInstance Win32_LogicalDisk `
-            -Filter "DeviceID='C:'"
+        $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+        $gpu = Get-CimInstance Win32_VideoController | Select-Object -First 1
 
-        $gpu = Get-CimInstance Win32_VideoController |
-            Select-Object -First 1
+        $totalRam = [Math]::Round($computer.TotalPhysicalMemory / 1GB, 2)
+        $freeRam = [Math]::Round($os.FreePhysicalMemory / 1MB, 2)
+        $usedRam = [Math]::Round($totalRam - $freeRam, 2)
 
-        $totalRam = [Math]::Round(
-            $computer.TotalPhysicalMemory / 1GB,
-            2
-        )
-
-        $freeRam = [Math]::Round(
-            $os.FreePhysicalMemory / 1MB,
-            2
-        )
-
-        $usedRam = [Math]::Round(
-            $totalRam - $freeRam,
-            2
-        )
-
-        $diskSize = [Math]::Round(
-            $disk.Size / 1GB,
-            2
-        )
-
-        $diskFree = [Math]::Round(
-            $disk.FreeSpace / 1GB,
-            2
-        )
+        $diskSize = [Math]::Round($disk.Size / 1GB, 2)
+        $diskFree = [Math]::Round($disk.FreeSpace / 1GB, 2)
 
         $uptime = (Get-Date) - $os.LastBootUpTime
 
@@ -1382,14 +1239,10 @@ function Update-SystemInformation {
             "Uptime: $($uptime.Days) days, $($uptime.Hours) hours"
         ) -join [Environment]::NewLine
 
-        Set-Status `
-            "System information updated." `
-            "#00FF00"
+        Set-Status "System information updated." "#00FF00"
     }
     catch {
-        Show-ToolError `
-            -Name "System information" `
-            -Exception $_
+        Show-ToolError -Name "System information" -Exception $_
     }
 }
 
@@ -1405,9 +1258,7 @@ function Invoke-ProcessWithProgress {
     )
 
     Set-Status "$Activity..." "#FFFF00"
-    Set-Progress `
-        -Indeterminate `
-        -Text "Working..."
+    Set-Progress -Indeterminate -Text "Working..."
 
     $argumentString = $Arguments -join " "
 
@@ -1423,10 +1274,7 @@ function Invoke-ProcessWithProgress {
         $process.Refresh()
     }
 
-    Set-Progress `
-        -Percent 100 `
-        -Text "Complete"
-
+    Set-Progress -Percent 100 -Text "Complete"
     return $process.ExitCode
 }
 
@@ -1445,14 +1293,10 @@ function Invoke-SFCScan {
             throw "SFC exited with code $exitCode."
         }
 
-        Set-Status `
-            "SFC scan completed." `
-            "#00FF00"
+        Set-Status "SFC scan completed." "#00FF00"
     }
     catch {
-        Show-ToolError `
-            -Name "SFC scan" `
-            -Exception $_
+        Show-ToolError -Name "SFC scan" -Exception $_
     }
 }
 
@@ -1491,14 +1335,10 @@ function Reset-Network {
             }
         }
 
-        Set-Status `
-            "Network reset completed." `
-            "#00FF00"
+        Set-Status "Network reset completed." "#00FF00"
     }
     catch {
-        Show-ToolError `
-            -Name "Network reset" `
-            -Exception $_
+        Show-ToolError -Name "Network reset" -Exception $_
     }
 }
 
@@ -1509,47 +1349,29 @@ function Reset-Network {
 function Export-WiFiPasswords {
     try {
         if (-not (Confirm-Action `
-            "Export saved Wi-Fi passwords to a text file?`n`n" +
-            "The file will contain sensitive information." `
+            ("Export saved Wi-Fi passwords to a text file?`n`n" +
+             "The file will contain sensitive information.") `
             "Wi-Fi Password Export")) {
             return
         }
 
-        $dialog = New-Object `
-            System.Windows.Forms.SaveFileDialog
-
+        $dialog = New-Object System.Windows.Forms.SaveFileDialog
         $dialog.Title = "Export Wi-Fi Profiles"
         $dialog.Filter = "Text files (*.txt)|*.txt"
-        $dialog.FileName =
-            "WiFi-Passwords-$(
-                Get-Date -Format 'yyyyMMdd-HHmmss'
-            ).txt"
-        $dialog.InitialDirectory =
-            $script:Settings.DownloadFolder
+        $dialog.FileName = "WiFi-Passwords-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+        $dialog.InitialDirectory = $script:Settings.DownloadFolder
 
-        if (
-            $dialog.ShowDialog() -ne
-            [System.Windows.Forms.DialogResult]::OK
-        ) {
+        if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
             return
         }
 
-        Set-Status `
-            "Reading saved Wi-Fi profiles..." `
-            "#FFFF00"
+        Set-Status "Reading saved Wi-Fi profiles..." "#FFFF00"
 
-        $profileOutput = & netsh.exe `
-            wlan `
-            show `
-            profiles `
-            2>$null
+        $profileOutput = & netsh.exe wlan show profiles 2>$null
 
         $profiles = @(
             foreach ($line in $profileOutput) {
-                if (
-                    $line -match
-                    '^\s*(All User Profile|User Profile)\s*:\s*(.+?)\s*$'
-                ) {
+                if ($line -match '^\s*(All User Profile|User Profile)\s*:\s*(.+?)\s*$') {
                     $Matches[2].Trim()
                 }
             }
@@ -1559,8 +1381,7 @@ function Export-WiFiPasswords {
             throw "No saved Wi-Fi profiles were found."
         }
 
-        $output = New-Object `
-            System.Collections.Generic.List[string]
+        $output = New-Object System.Collections.Generic.List[string]
 
         $output.Add("CrazyAlexTool Wi-Fi Export")
         $output.Add("Created: $(Get-Date)")
@@ -1570,17 +1391,9 @@ function Export-WiFiPasswords {
         $output.Add("")
 
         foreach ($profile in $profiles) {
-            Set-Status `
-                "Reading Wi-Fi profile: $profile" `
-                "#FFFF00"
+            Set-Status "Reading Wi-Fi profile: $profile" "#FFFF00"
 
-            $details = & netsh.exe `
-                wlan `
-                show `
-                profile `
-                "name=$profile" `
-                key=clear `
-                2>$null
+            $details = & netsh.exe wlan show profile "name=$profile" key=clear 2>$null
 
             $password = $null
 
@@ -1600,14 +1413,9 @@ function Export-WiFiPasswords {
             $output.Add("")
         }
 
-        $output |
-            Set-Content `
-                -Path $dialog.FileName `
-                -Encoding UTF8
+        $output | Set-Content -Path $dialog.FileName -Encoding UTF8
 
-        Set-Status `
-            "Wi-Fi export completed." `
-            "#00FF00"
+        Set-Status "Wi-Fi export completed." "#00FF00"
 
         [System.Windows.MessageBox]::Show(
             "Wi-Fi profiles were exported to:`n`n$($dialog.FileName)",
@@ -1617,9 +1425,7 @@ function Export-WiFiPasswords {
         ) | Out-Null
     }
     catch {
-        Show-ToolError `
-            -Name "Wi-Fi export" `
-            -Exception $_
+        Show-ToolError -Name "Wi-Fi export" -Exception $_
     }
 }
 
@@ -1629,12 +1435,9 @@ function Export-WiFiPasswords {
 
 function Show-WindowsProductKey {
     try {
-        $registryPath =
-            "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform"
+        $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform"
 
-        $key = (Get-ItemProperty `
-            -Path $registryPath `
-            -ErrorAction Stop).BackupProductKeyDefault
+        $key = (Get-ItemProperty -Path $registryPath -ErrorAction Stop).BackupProductKeyDefault
 
         if ($key) {
             [System.Windows.MessageBox]::Show(
@@ -1644,9 +1447,7 @@ function Show-WindowsProductKey {
                 [System.Windows.MessageBoxImage]::Information
             ) | Out-Null
 
-            Set-Status `
-                "Product key displayed." `
-                "#00FF00"
+            Set-Status "Product key displayed." "#00FF00"
         }
         else {
             [System.Windows.MessageBox]::Show(
@@ -1656,15 +1457,11 @@ function Show-WindowsProductKey {
                 [System.Windows.MessageBoxImage]::Information
             ) | Out-Null
 
-            Set-Status `
-                "No OEM product key found." `
-                "#FFAA00"
+            Set-Status "No OEM product key found." "#FFAA00"
         }
     }
     catch {
-        Show-ToolError `
-            -Name "Windows product key" `
-            -Exception $_
+        Show-ToolError -Name "Windows product key" -Exception $_
     }
 }
 
@@ -1689,7 +1486,6 @@ function Apply-AccentColor {
         "HdrQuickTools"
         "HdrOffice"
         "HdrScripts"
-        "HdrSystemTools"
         "HdrSettings"
     )) {
         $control = $Window.FindName($name)
@@ -1711,19 +1507,13 @@ function Save-SettingsFromUI {
         }
 
         if (-not (Test-Path $folder)) {
-            New-Item `
-                -Path $folder `
-                -ItemType Directory `
-                -Force | Out-Null
+            New-Item -Path $folder -ItemType Directory -Force | Out-Null
         }
 
         $script:Settings.DownloadFolder = $folder
-        $script:Settings.ConfirmActions =
-            ($ChkConfirmActions.IsChecked -eq $true)
-        $script:Settings.AutoRefresh =
-            ($ChkAutoRefresh.IsChecked -eq $true)
-        $script:Settings.Accent =
-            [string]$CmbAccent.SelectedItem
+        $script:Settings.ConfirmActions = ($ChkConfirmActions.IsChecked -eq $true)
+        $script:Settings.AutoRefresh = ($ChkAutoRefresh.IsChecked -eq $true)
+        $script:Settings.Accent = [string]$CmbAccent.SelectedItem
 
         Save-AppSettings
         Apply-AccentColor
@@ -1735,34 +1525,22 @@ function Save-SettingsFromUI {
             $script:InfoTimer.Stop()
         }
 
-        Set-Status `
-            "Settings saved." `
-            "#00FF00"
+        Set-Status "Settings saved." "#00FF00"
     }
     catch {
-        Show-ToolError `
-            -Name "Saving settings" `
-            -Exception $_
+        Show-ToolError -Name "Saving settings" -Exception $_
     }
 }
 
 function Reset-Settings {
-    if (-not (Confirm-Action `
-        "Reset CrazyAlexTool settings to their defaults?")) {
+    if (-not (Confirm-Action "Reset CrazyAlexTool settings to their defaults?")) {
         return
     }
 
-    $TxtDownloadFolder.Text =
-        $script:DefaultSettings.DownloadFolder
-
-    $ChkConfirmActions.IsChecked =
-        $script:DefaultSettings.ConfirmActions
-
-    $ChkAutoRefresh.IsChecked =
-        $script:DefaultSettings.AutoRefresh
-
-    $CmbAccent.SelectedItem =
-        $script:DefaultSettings.Accent
+    $TxtDownloadFolder.Text = $script:DefaultSettings.DownloadFolder
+    $ChkConfirmActions.IsChecked = $script:DefaultSettings.ConfirmActions
+    $ChkAutoRefresh.IsChecked = $script:DefaultSettings.AutoRefresh
+    $CmbAccent.SelectedItem = $script:DefaultSettings.Accent
 
     Save-SettingsFromUI
 }
@@ -1777,7 +1555,7 @@ $script:SearchableControls = @(
     $BtnWifi
     $BtnExportWifi
     $BtnKey
-    $BtnOfficeSetup
+    $BtnOfficeODT
     $BtnScrubber
     $BtnWinTools
     $BtnWinrar
@@ -1795,18 +1573,16 @@ function Filter-Tools {
 
         $searchText = "$content $tag".ToLowerInvariant()
 
-        $matches = (
+        $isMatch = (
             [string]::IsNullOrWhiteSpace($query) -or
             $searchText.Contains($query)
         )
 
-        if ($matches) {
-            $control.Visibility =
-                [System.Windows.Visibility]::Visible
+        if ($isMatch) {
+            $control.Visibility = [System.Windows.Visibility]::Visible
         }
         else {
-            $control.Visibility =
-                [System.Windows.Visibility]::Collapsed
+            $control.Visibility = [System.Windows.Visibility]::Collapsed
         }
     }
 }
@@ -1819,26 +1595,16 @@ foreach ($accentName in $script:AccentMap.Keys) {
     [void]$CmbAccent.Items.Add($accentName)
 }
 
-$TxtDownloadFolder.Text =
-    $script:Settings.DownloadFolder
-
-$ChkConfirmActions.IsChecked =
-    $script:Settings.ConfirmActions
-
-$ChkAutoRefresh.IsChecked =
-    $script:Settings.AutoRefresh
-
-$CmbAccent.SelectedItem =
-    $script:Settings.Accent
+$TxtDownloadFolder.Text = $script:Settings.DownloadFolder
+$ChkConfirmActions.IsChecked = $script:Settings.ConfirmActions
+$ChkAutoRefresh.IsChecked = $script:Settings.AutoRefresh
+$CmbAccent.SelectedItem = $script:Settings.Accent
 
 Apply-AccentColor
 Update-SystemInformation
 
-$script:InfoTimer =
-    New-Object System.Windows.Threading.DispatcherTimer
-
-$script:InfoTimer.Interval =
-    [TimeSpan]::FromSeconds(10)
+$script:InfoTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:InfoTimer.Interval = [TimeSpan]::FromSeconds(10)
 
 $script:InfoTimer.Add_Tick({
     if ($ChkAutoRefresh.IsChecked -eq $true) {
@@ -1854,36 +1620,15 @@ if ($script:Settings.AutoRefresh) {
 # BUTTON EVENTS
 # ============================================================
 
-$TxtSearch.Add_TextChanged({
-    Filter-Tools
-})
+$TxtSearch.Add_TextChanged({ Filter-Tools })
 
-$BtnRefreshInfo.Add_Click({
-    Update-SystemInformation
-})
+$BtnRefreshInfo.Add_Click({ Update-SystemInformation })
+$BtnSFC.Add_Click({ Invoke-SFCScan })
+$BtnWifi.Add_Click({ Reset-Network })
+$BtnExportWifi.Add_Click({ Export-WiFiPasswords })
+$BtnKey.Add_Click({ Show-WindowsProductKey })
 
-$BtnSFC.Add_Click({
-    Invoke-SFCScan
-})
-
-$BtnWifi.Add_Click({
-    Reset-Network
-})
-
-$BtnExportWifi.Add_Click({
-    Export-WiFiPasswords
-})
-
-$BtnKey.Add_Click({
-    Show-WindowsProductKey
-})
-
-$BtnOfficeSetup.Add_Click({
-    Invoke-ZipTool `
-        -Name "OfficeSetup" `
-        -Url $script:Links.OfficeSetup `
-        -TargetFile "setup.exe"
-})
+$BtnOfficeODT.Add_Click({ Install-OfficeODT })
 
 $BtnScrubber.Add_Click({
     Invoke-ZipTool `
@@ -1914,31 +1659,17 @@ $BtnUpdate.Add_Click({
 })
 
 $BtnBrowseFolder.Add_Click({
-    $dialog = New-Object `
-        System.Windows.Forms.FolderBrowserDialog
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = "Select the CrazyAlexTool download folder"
+    $dialog.SelectedPath = $TxtDownloadFolder.Text
 
-    $dialog.Description =
-        "Select the CrazyAlexTool download folder"
-
-    $dialog.SelectedPath =
-        $TxtDownloadFolder.Text
-
-    if (
-        $dialog.ShowDialog() -eq
-        [System.Windows.Forms.DialogResult]::OK
-    ) {
-        $TxtDownloadFolder.Text =
-            $dialog.SelectedPath
+    if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $TxtDownloadFolder.Text = $dialog.SelectedPath
     }
 })
 
-$BtnSaveSettings.Add_Click({
-    Save-SettingsFromUI
-})
-
-$BtnResetSettings.Add_Click({
-    Reset-Settings
-})
+$BtnSaveSettings.Add_Click({ Save-SettingsFromUI })
+$BtnResetSettings.Add_Click({ Reset-Settings })
 
 $ChkAutoRefresh.Add_Click({
     if ($ChkAutoRefresh.IsChecked -eq $true) {
@@ -1949,24 +1680,15 @@ $ChkAutoRefresh.Add_Click({
     }
 })
 
-$CmbAccent.Add_SelectionChanged({
-    Apply-AccentColor
-})
+$CmbAccent.Add_SelectionChanged({ Apply-AccentColor })
 
 $Window.Add_Closing({
     $script:InfoTimer.Stop()
 
-    $script:Settings.DownloadFolder =
-        $TxtDownloadFolder.Text
-
-    $script:Settings.ConfirmActions =
-        ($ChkConfirmActions.IsChecked -eq $true)
-
-    $script:Settings.AutoRefresh =
-        ($ChkAutoRefresh.IsChecked -eq $true)
-
-    $script:Settings.Accent =
-        [string]$CmbAccent.SelectedItem
+    $script:Settings.DownloadFolder = $TxtDownloadFolder.Text
+    $script:Settings.ConfirmActions = ($ChkConfirmActions.IsChecked -eq $true)
+    $script:Settings.AutoRefresh = ($ChkAutoRefresh.IsChecked -eq $true)
+    $script:Settings.Accent = [string]$CmbAccent.SelectedItem
 
     Save-AppSettings
 
