@@ -1,5 +1,9 @@
 {
-  "version": 1,
+  "version": 2,
+  "assets": {
+    "lhmMainDll": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/LibreHardwareMonitorLib.dll",
+    "lhmHidDll": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/HidSharp.dll"
+  },
   "tools": [
     {
       "id": "officeODT",
