@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "id": "officeODT",
+      "label": "Install Office (ODT)",
+      "type": "builtin",
+      "action": "Install-OfficeODT",
+      "category": "office",
+      "width": 205,
+      "tag": "office setup installer microsoft odt"
+    },
+    {
+      "id": "scrubber",
+      "label": "Office Scrubber",
+      "type": "builtin",
+      "action": "Invoke-OfficeScrubber",
+      "category": "office",
+      "width": 205,
+      "tag": "office scrubber cleanup remove"
+    },
+    {
+      "id": "winTools",
+      "label": "Win Office Tools",
+      "type": "single-file",
+      "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat",
+      "extension": ".bat",
+      "category": "office",
+      "width": 205,
+      "tag": "office windows tools"
+    },
+    {
+      "id": "winrar",
+      "label": "Activate WinRAR",
+      "type": "builtin",
+      "action": "Activate-WinRAR",
+      "category": "office",
+      "width": 205,
+      "tag": "winrar activate license key"
+    },
+    {
+      "id": "genp",
+      "label": "GenP Activator",
+      "type": "builtin",
+      "action": "Invoke-GenP",
+      "category": "scripts",
+      "width": 205,
+      "tag": "genp activator adobe"
+    },
+    {
+      "id": "update",
+      "label": "System Update",
+      "type": "single-file",
+      "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat",
+      "extension": ".bat",
+      "category": "scripts",
+      "width": 205,
+      "tag": "system update windows update"
+    }
+  ]
+}
