@@ -22,44 +22,11 @@ Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
 # CLEAN SLATE
 # ============================================================
 
-$leftoverVarNames = @(
-    "AppName", "AppDataPath", "SettingsPath", "TemporaryPath", "LogPath",
-    "DefaultDownloadFolder", "Links", "AccentMap",
-    "DefaultSettings", "Settings", "InfoTimer",
-    "SearchableControls", "PickerResult", "LabelPickerResult",
-    "RemoteScriptUrl", "ToolsJsonUrl",
-    "Window", "Reader", "XAML",
-    "TitleText", "SubtitleText", "TxtSearch", "MainTabs",
-    "SystemInfoText", "StatusText", "ProgressText", "MainProgress",
-    "BtnRefreshInfo", "BtnSFC", "BtnWifi", "BtnExportWifi", "BtnKey",
-    "OfficePanel", "ScriptsPanel",
-    "TxtDownloadFolder", "BtnBrowseFolder", "ChkConfirmActions",
-    "ChkAutoRefresh", "ChkShowToasts", "ChkEnableLog",
-    "CmbAccent", "BtnSaveSettings", "BtnResetSettings",
-    "BtnUpdateTool", "BtnOpenAppData", "BtnViewLog",
-    "ActiveJobs", "JobPoller",
-    "ToolCatalog", "ToastNotifier"
-)
-
-foreach ($varName in $leftoverVarNames) {
-    foreach ($scope in @("Script", "Global")) {
-        try {
-            if (Get-Variable -Name $varName -Scope $scope -ErrorAction SilentlyContinue) {
-                Remove-Variable -Name $varName -Scope $scope -Force -ErrorAction SilentlyContinue
-            }
-        } catch { }
-    }
-}
-
-# Clean up leftover LHM cache from previous versions if present
+# Clean up leftover LHM cache from previous versions
 try {
     $lhmOldFolder = Join-Path $env:APPDATA "CrazyAlexTool\LHM"
     if (Test-Path $lhmOldFolder) {
         Remove-Item -Path $lhmOldFolder -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    $lhmOldDll = Join-Path $env:APPDATA "CrazyAlexTool\LibreHardwareMonitorLib.dll"
-    if (Test-Path $lhmOldDll) {
-        Remove-Item -Path $lhmOldDll -Force -ErrorAction SilentlyContinue
     }
 } catch { }
 
@@ -105,7 +72,8 @@ if ((-not (Test-IsAdministrator)) -or $isRemoteExecution -or $isPowerShell7) {
         $powershellPath = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
         if (-not (Test-Path $powershellPath)) { throw "Windows PowerShell 5.1 not found." }
 
-        $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+        # Added -STA for proper WPF initialization
+        $arguments = "-NoProfile -STA -ExecutionPolicy Bypass -File `"$scriptPath`""
 
         if (Test-IsAdministrator) {
             Start-Process -FilePath $powershellPath -ArgumentList $arguments -ErrorAction Stop | Out-Null
@@ -121,12 +89,9 @@ if ((-not (Test-IsAdministrator)) -or $isRemoteExecution -or $isPowerShell7) {
 # ASSEMBLIES
 # ============================================================
 
+# Trimmed redundant assembly loads to save startup time
 Add-Type -AssemblyName PresentationFramework
-Add-Type -AssemblyName PresentationCore
-Add-Type -AssemblyName WindowsBase
-Add-Type -AssemblyName System.Xaml
 Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -167,6 +132,15 @@ $script:DefaultSettings = [ordered]@{
 $script:Settings = [ordered]@{}
 $script:ActiveJobs = @{}
 $script:ToolCatalog = @()
+
+# Static System Info Cache
+$script:SysCache = @{
+    OS          = $null
+    CPU         = $null
+    GPU         = $null
+    Comp        = $null
+    DrivesMap   = $null
+}
 
 # ============================================================
 # LOGGING & SETTINGS
@@ -230,21 +204,8 @@ Write-Log "CrazyAlexTool $script:AppVersion started"
 # LOAD tools.json
 # ============================================================
 
-function Load-ToolCatalog {
-    try {
-        $response = Invoke-WebRequest -Uri $script:ToolsJsonUrl -UseBasicParsing -TimeoutSec 8 -ErrorAction Stop
-        $parsed = $response.Content | ConvertFrom-Json
-
-        if ($parsed.tools) {
-            $script:ToolCatalog = $parsed.tools
-            Write-Log "Loaded tools.json ($($script:ToolCatalog.Count) tools)"
-            return
-        }
-    }
-    catch { Write-Log "Failed to load tools.json: $($_.Exception.Message)" "WARN" }
-
-    Write-Log "Using hardcoded fallback tool catalog"
-    $script:ToolCatalog = @(
+function Get-FallbackCatalog {
+    return @(
         [pscustomobject]@{ id="officeODT"; label="Install Office (ODT)"; type="builtin"; action="Install-OfficeODT"; category="office"; width=205; tag="office setup installer microsoft odt" }
         [pscustomobject]@{ id="scrubber"; label="Office Scrubber"; type="builtin"; action="Invoke-OfficeScrubber"; category="office"; width=205; tag="office scrubber cleanup remove" }
         [pscustomobject]@{ id="winTools"; label="Win Office Tools"; type="single-file"; url=$script:Links.WinTools; extension=".bat"; category="office"; width=205; tag="office windows tools" }
@@ -252,6 +213,61 @@ function Load-ToolCatalog {
         [pscustomobject]@{ id="genp"; label="GenP Activator"; type="builtin"; action="Invoke-GenP"; category="scripts"; width=205; tag="genp activator adobe" }
         [pscustomobject]@{ id="update"; label="System Update"; type="single-file"; url=$script:Links.Update; extension=".bat"; category="scripts"; width=205; tag="system update windows update" }
     )
+}
+
+function Load-ToolCatalog {
+    # Start with cache or hardcoded - never block on network
+    $cachePath = Join-Path $script:AppDataPath "tools.cache.json"
+
+    if (Test-Path $cachePath) {
+        try {
+            $cached = Get-Content $cachePath -Raw -ErrorAction Stop | ConvertFrom-Json
+            if ($cached.tools) {
+                $script:ToolCatalog = $cached.tools
+                Write-Log "Using cached tools.json"
+                return
+            }
+        } catch { }
+    }
+
+    $script:ToolCatalog = Get-FallbackCatalog
+    Write-Log "Using hardcoded catalog"
+}
+
+function Refresh-ToolCatalogInBackground {
+    $url = $script:ToolsJsonUrl
+    $cachePath = Join-Path $script:AppDataPath "tools.cache.json"
+
+    $job = Start-Job -Name "ToolsRefresh" -ScriptBlock {
+        param($u)
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            # Reduced timeout to 3 seconds
+            $r = Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+            return @{ Success = $true; Content = $r.Content }
+        } catch {
+            return @{ Success = $false; Error = $_.Exception.Message }
+        }
+    } -ArgumentList $url
+
+    $script:ActiveJobs[$job.Id] = @{
+        Name = "Tool refresh"
+        Job = $job
+        StartTime = Get-Date
+        OnComplete = {
+            param($result)
+            if (-not $result.Success) { return }
+            try {
+                $parsed = $result.Content | ConvertFrom-Json
+                if ($parsed.tools) {
+                    $script:ToolCatalog = $parsed.tools
+                    Set-Content -Path $cachePath -Value $result.Content -Encoding UTF8
+                    Build-ToolPanels
+                    Write-Log "Remote tools.json applied"
+                }
+            } catch { }
+        }
+    }
 }
 
 Load-ToolCatalog
@@ -432,8 +448,9 @@ Load-ToolCatalog
                             <TextBlock Name="HdrSystemInfo" Grid.Row="0" Text="SYSTEM INFORMATION"
                                        Foreground="#00FFFF" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <!-- Changed FontFamily to Segoe UI -->
                                 <TextBlock Name="SystemInfoText" Foreground="#FFFFFF" FontSize="13"
-                                           TextWrapping="Wrap" LineHeight="22" FontFamily="Consolas"/>
+                                           TextWrapping="Wrap" LineHeight="22" FontFamily="Segoe UI"/>
                             </ScrollViewer>
                             <Button Name="BtnRefreshInfo" Grid.Row="2" Content="Refresh System Information"
                                     Width="230" HorizontalAlignment="Left" Style="{StaticResource ToolButton}"
@@ -654,6 +671,7 @@ function Show-Toast {
     try {
         if (-not $script:ToastNotifier) {
             $script:ToastNotifier = New-Object System.Windows.Forms.NotifyIcon
+            # We use System.Drawing.SystemIcons loaded by System.Windows.Forms
             $script:ToastNotifier.Icon = [System.Drawing.SystemIcons]::Information
             $script:ToastNotifier.Visible = $true
             $script:ToastNotifier.Text = "CrazyAlexTool"
@@ -1019,26 +1037,14 @@ function Show-LabelPicker {
 }
 
 # ============================================================
-# SYSTEM INFORMATION (no temperatures)
+# SYSTEM INFORMATION (Cached CIM)
 # ============================================================
 
 function Get-DrivesInfoBlock {
-    $ptd = @{}
-    try {
-        $disks = Get-CimInstance Win32_DiskDrive -ErrorAction Stop
-        foreach ($d in $disks) {
-            $parts = Get-CimAssociatedInstance -InputObject $d -ResultClassName Win32_DiskPartition -ErrorAction SilentlyContinue
-            foreach ($p in $parts) {
-                $lds = Get-CimAssociatedInstance -InputObject $p -ResultClassName Win32_LogicalDisk -ErrorAction SilentlyContinue
-                foreach ($ld in $lds) { $ptd[$ld.DeviceID] = $d.Model.Trim() }
-            }
-        }
-    } catch { }
-
-    $lds = Get-CimInstance Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in 2,3,4,5 }
+    $lds = Get-CimInstance Win32_LogicalDisk -Property DeviceID, DriveType, Size, FreeSpace -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in 2,3,4,5 }
     $map = @{ 2="Removable Drive"; 3="Local Disk"; 4="Network Drive"; 5="CD/DVD Drive" }
     $lines = foreach ($ld in $lds) {
-        $model = $ptd[$ld.DeviceID]
+        $model = $script:SysCache.DrivesMap[$ld.DeviceID]
         if (-not $model) { $model = $map[[int]$ld.DriveType]; if (-not $model) { $model = "Unknown" } }
         if ($ld.Size -gt 0) {
             $s = [Math]::Round($ld.Size / 1GB, 0); $f = [Math]::Round($ld.FreeSpace / 1GB, 0)
@@ -1051,7 +1057,7 @@ function Get-DrivesInfoBlock {
 
 function Get-BatteryInfoLine {
     try {
-        $b = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
+        $b = Get-CimInstance Win32_Battery -Property BatteryStatus, EstimatedChargeRemaining -ErrorAction SilentlyContinue
         if (-not $b) { return $null }
         $m = @{ 1="Discharging"; 2="On AC"; 3="Fully Charged"; 4="Low"; 5="Critical"; 6="Charging"; 7="Charging High"; 8="Charging Low"; 9="Charging Critical"; 10="Undefined"; 11="Partially Charged" }
         $s = $m[[int]$b.BatteryStatus]; if (-not $s) { $s = "Unknown" }
@@ -1074,13 +1080,37 @@ function Get-NetworkInfoLines {
 function Update-SystemInformation {
     try {
         Set-Status "Reading system information..." "#FFFF00"
-        $os = Get-CimInstance Win32_OperatingSystem
-        $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
-        $comp = Get-CimInstance Win32_ComputerSystem
-        $gpu = Get-CimInstance Win32_VideoController | Select-Object -First 1
+        
+        # Build CIM cache on first run to avoid repeating slow queries
+        if (-not $script:SysCache.OS) {
+            $script:SysCache.OS = Get-CimInstance Win32_OperatingSystem | Select-Object -First 1 Caption, Version, LastBootUpTime
+            $script:SysCache.CPU = Get-CimInstance Win32_Processor | Select-Object -First 1 Name
+            $script:SysCache.GPU = Get-CimInstance Win32_VideoController | Select-Object -First 1 Name
+            $script:SysCache.Comp = Get-CimInstance Win32_ComputerSystem | Select-Object -First 1 TotalPhysicalMemory
+            
+            $ptd = @{}
+            try {
+                $disks = Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue
+                foreach ($d in $disks) {
+                    $parts = Get-CimAssociatedInstance -InputObject $d -ResultClassName Win32_DiskPartition -ErrorAction SilentlyContinue
+                    foreach ($p in $parts) {
+                        $lds = Get-CimAssociatedInstance -InputObject $p -ResultClassName Win32_LogicalDisk -ErrorAction SilentlyContinue
+                        foreach ($ld in $lds) { $ptd[$ld.DeviceID] = $d.Model.Trim() }
+                    }
+                }
+            } catch { }
+            $script:SysCache.DrivesMap = $ptd
+        }
 
+        $os = $script:SysCache.OS
+        $cpu = $script:SysCache.CPU
+        $comp = $script:SysCache.Comp
+        $gpu = $script:SysCache.GPU
+
+        # Only pull volatile stats
+        $freeMem = Get-CimInstance Win32_OperatingSystem -Property FreePhysicalMemory
         $totalRam = [Math]::Round($comp.TotalPhysicalMemory / 1GB, 2)
-        $freeRam = [Math]::Round($os.FreePhysicalMemory / 1MB, 2)
+        $freeRam = [Math]::Round($freeMem.FreePhysicalMemory / 1MB, 2)
         $usedRam = [Math]::Round($totalRam - $freeRam, 2)
         $up = (Get-Date) - $os.LastBootUpTime
 
@@ -1350,7 +1380,12 @@ $CmbAccent.SelectedItem = $as
 
 Build-ToolPanels
 Apply-AccentColor
-Update-SystemInformation
+
+# DEFERRED STARTUP TO PREVENT UI BLOCKING
+$Window.Add_Loaded({
+    Update-SystemInformation
+    Refresh-ToolCatalogInBackground
+})
 
 $script:InfoTimer = New-Object System.Windows.Threading.DispatcherTimer
 $script:InfoTimer.Interval = [TimeSpan]::FromSeconds(10)
