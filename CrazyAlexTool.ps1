@@ -15,7 +15,7 @@
 # VERSION MARKER
 # ============================================================
 
-$script:AppVersion = "1.3.1"
+$script:AppVersion = "1.4.0"
 Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
 
 # ============================================================
@@ -28,7 +28,6 @@ $leftoverVarNames = @(
     "DefaultSettings", "Settings", "InfoTimer",
     "SearchableControls", "PickerResult", "LabelPickerResult",
     "RemoteScriptUrl", "ToolsJsonUrl",
-    "LhmMainDllUrl", "LhmHidDllUrl", "LhmFolder", "LhmMainDllPath", "LhmHidDllPath",
     "Window", "Reader", "XAML",
     "TitleText", "SubtitleText", "TxtSearch", "MainTabs",
     "SystemInfoText", "StatusText", "ProgressText", "MainProgress",
@@ -39,7 +38,6 @@ $leftoverVarNames = @(
     "CmbAccent", "BtnSaveSettings", "BtnResetSettings",
     "BtnUpdateTool", "BtnOpenAppData", "BtnViewLog",
     "ActiveJobs", "JobPoller",
-    "LhmComputer", "LhmLoaded",
     "ToolCatalog", "ToastNotifier"
 )
 
@@ -52,6 +50,14 @@ foreach ($varName in $leftoverVarNames) {
         } catch { }
     }
 }
+
+# Also remove any leftover LHM cache from previous versions
+try {
+    $lhmOldFolder = Join-Path $env:APPDATA "CrazyAlexTool\LHM"
+    if (Test-Path $lhmOldFolder) {
+        Remove-Item -Path $lhmOldFolder -Recurse -Force -ErrorAction SilentlyContinue
+    }
+} catch { }
 
 [GC]::Collect()
 [GC]::WaitForPendingFinalizers()
@@ -132,16 +138,6 @@ $script:TemporaryPath = Join-Path $env:TEMP $script:AppName
 $script:DefaultDownloadFolder = Join-Path $env:USERPROFILE "Downloads\CrazyAlexTool"
 
 $script:ToolsJsonUrl = "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/tools.json"
-
-# LHM DLLs - defaults, may be overridden by tools.json 'assets' block
-$script:LhmMainDllUrl = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/LibreHardwareMonitorLib.dll"
-$script:LhmHidDllUrl  = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/HidSharp.dll"
-$script:LhmFolder = Join-Path $script:AppDataPath "LHM"
-$script:LhmMainDllPath = Join-Path $script:LhmFolder "LibreHardwareMonitorLib.dll"
-$script:LhmHidDllPath = Join-Path $script:LhmFolder "HidSharp.dll"
-
-$script:LhmComputer = $null
-$script:LhmLoaded = $false
 
 $script:Links = [ordered]@{
     Scrubber = "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/OfficeScrubber.zip"
@@ -227,36 +223,11 @@ Load-AppSettings
 Write-Log "CrazyAlexTool $script:AppVersion started"
 
 # ============================================================
-# LOAD tools.json (includes DLL asset URLs)
+# TOOL CATALOG (fast startup, background refresh)
 # ============================================================
 
-function Load-ToolCatalog {
-    try {
-        $response = Invoke-WebRequest -Uri $script:ToolsJsonUrl -UseBasicParsing -TimeoutSec 8 -ErrorAction Stop
-        $parsed = $response.Content | ConvertFrom-Json
-
-        # Override DLL URLs if provided in tools.json
-        if ($parsed.assets) {
-            if ($parsed.assets.lhmMainDll) {
-                $script:LhmMainDllUrl = [string]$parsed.assets.lhmMainDll
-                Write-Log "LHM main DLL URL from tools.json"
-            }
-            if ($parsed.assets.lhmHidDll) {
-                $script:LhmHidDllUrl = [string]$parsed.assets.lhmHidDll
-                Write-Log "LHM HidSharp URL from tools.json"
-            }
-        }
-
-        if ($parsed.tools) {
-            $script:ToolCatalog = $parsed.tools
-            Write-Log "Loaded tools.json ($($script:ToolCatalog.Count) tools)"
-            return
-        }
-    }
-    catch { Write-Log "Failed to load tools.json: $($_.Exception.Message)" "WARN" }
-
-    Write-Log "Using hardcoded fallback tool catalog"
-    $script:ToolCatalog = @(
+function Get-HardcodedCatalog {
+    return @(
         [pscustomobject]@{ id="officeODT"; label="Install Office (ODT)"; type="builtin"; action="Install-OfficeODT"; category="office"; width=205; tag="office setup installer microsoft odt" }
         [pscustomobject]@{ id="scrubber"; label="Office Scrubber"; type="builtin"; action="Invoke-OfficeScrubber"; category="office"; width=205; tag="office scrubber cleanup remove" }
         [pscustomobject]@{ id="winTools"; label="Win Office Tools"; type="single-file"; url=$script:Links.WinTools; extension=".bat"; category="office"; width=205; tag="office windows tools" }
@@ -266,10 +237,77 @@ function Load-ToolCatalog {
     )
 }
 
+function Apply-ToolsJson {
+    param([object]$parsed)
+    if (-not $parsed) { return $false }
+    if ($parsed.tools) {
+        $script:ToolCatalog = $parsed.tools
+        return $true
+    }
+    return $false
+}
+
+function Load-ToolCatalog {
+    $script:ToolCatalog = Get-HardcodedCatalog
+
+    $cachedJsonPath = Join-Path $script:AppDataPath "tools.cache.json"
+    if (Test-Path $cachedJsonPath) {
+        try {
+            $cached = Get-Content $cachedJsonPath -Raw -ErrorAction Stop | ConvertFrom-Json
+            if (Apply-ToolsJson $cached) {
+                Write-Log "Loaded tools.json from cache ($($script:ToolCatalog.Count) tools)"
+            }
+        } catch {
+            Write-Log "Cached tools.json corrupted, using hardcoded defaults" "WARN"
+        }
+    } else {
+        Write-Log "No cache - using hardcoded defaults"
+    }
+}
+
+function Refresh-ToolCatalogInBackground {
+    $cachedJsonPath = Join-Path $script:AppDataPath "tools.cache.json"
+    $url = $script:ToolsJsonUrl
+
+    $job = Start-Job -Name "ToolsJsonRefresh" -ScriptBlock {
+        param($u)
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            $r = Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 8 -ErrorAction Stop
+            return @{ Success = $true; Content = $r.Content }
+        } catch {
+            return @{ Success = $false; Error = $_.Exception.Message }
+        }
+    } -ArgumentList $url
+
+    $script:ActiveJobs[$job.Id] = @{
+        Name = "Tool catalog refresh"
+        Job = $job
+        StartTime = Get-Date
+        OnComplete = {
+            param($result)
+            if (-not $result.Success) {
+                Write-Log "Remote tools.json refresh failed: $($result.Error)" "WARN"
+                return
+            }
+            try {
+                $parsed = $result.Content | ConvertFrom-Json
+                if (Apply-ToolsJson $parsed) {
+                    Set-Content -Path $cachedJsonPath -Value $result.Content -Encoding UTF8
+                    Build-ToolPanels
+                    Write-Log "Remote tools.json applied ($($script:ToolCatalog.Count) tools)"
+                }
+            } catch {
+                Write-Log "Remote tools.json invalid: $($_.Exception.Message)" "WARN"
+            }
+        }
+    }
+}
+
 Load-ToolCatalog
 
 # ============================================================
-# WPF XAML  (identical to v1.3.0 - see previous message)
+# WPF XAML
 # ============================================================
 
 [xml]$XAML = @"
@@ -806,128 +844,6 @@ function Invoke-SingleFileTool {
 }
 
 # ============================================================
-# LIBREHARDWAREMONITOR (from your GitHub-hosted DLLs)
-# ============================================================
-
-function Ensure-Lhm {
-    if ($script:LhmLoaded) { return $true }
-
-    try {
-        if (-not (Test-Path $script:LhmFolder)) {
-            New-Item -Path $script:LhmFolder -ItemType Directory -Force | Out-Null
-        }
-
-        # Download main DLL if missing
-        if (-not (Test-Path $script:LhmMainDllPath)) {
-            Write-Log "Downloading LibreHardwareMonitorLib.dll from $script:LhmMainDllUrl"
-            Set-Status "Downloading hardware monitor library (first-time only)..." "#FFFF00"
-
-            $req = [System.Net.HttpWebRequest]::Create($script:LhmMainDllUrl)
-            $req.UserAgent = "CrazyAlexTool"
-            $req.AllowAutoRedirect = $true
-            $resp = $req.GetResponse()
-            $in = $resp.GetResponseStream()
-            $out = New-Object System.IO.FileStream($script:LhmMainDllPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
-            $in.CopyTo($out)
-            $out.Dispose(); $in.Dispose(); $resp.Dispose()
-
-            if ((Get-Item $script:LhmMainDllPath).Length -lt 50KB) {
-                throw "Downloaded LibreHardwareMonitorLib.dll is too small (URL broken?)."
-            }
-            Write-Log "LibreHardwareMonitorLib.dll saved OK"
-        }
-
-        # Download HidSharp dependency if missing
-        if (-not (Test-Path $script:LhmHidDllPath)) {
-            Write-Log "Downloading HidSharp.dll from $script:LhmHidDllUrl"
-
-            $req = [System.Net.HttpWebRequest]::Create($script:LhmHidDllUrl)
-            $req.UserAgent = "CrazyAlexTool"
-            $req.AllowAutoRedirect = $true
-            $resp = $req.GetResponse()
-            $in = $resp.GetResponseStream()
-            $out = New-Object System.IO.FileStream($script:LhmHidDllPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
-            $in.CopyTo($out)
-            $out.Dispose(); $in.Dispose(); $resp.Dispose()
-
-            if ((Get-Item $script:LhmHidDllPath).Length -lt 20KB) {
-                Write-Log "HidSharp.dll download suspiciously small" "WARN"
-            } else {
-                Write-Log "HidSharp.dll saved OK"
-            }
-        }
-
-        # Unblock both DLLs
-        Get-ChildItem -Path $script:LhmFolder -Filter "*.dll" -File -ErrorAction SilentlyContinue |
-            ForEach-Object {
-                try { Unblock-File -Path $_.FullName -ErrorAction SilentlyContinue } catch { }
-            }
-
-        # Load HidSharp first (it's a dependency)
-        if (Test-Path $script:LhmHidDllPath) {
-            try { Add-Type -Path $script:LhmHidDllPath -ErrorAction Stop } catch {
-                Write-Log "HidSharp load warning: $($_.Exception.Message)" "WARN"
-            }
-        }
-
-        # Then main lib
-        Add-Type -Path $script:LhmMainDllPath -ErrorAction Stop
-
-        $script:LhmComputer = New-Object LibreHardwareMonitor.Hardware.Computer
-        $script:LhmComputer.IsCpuEnabled = $true
-        $script:LhmComputer.IsGpuEnabled = $true
-        $script:LhmComputer.IsMotherboardEnabled = $false
-        $script:LhmComputer.IsStorageEnabled = $false
-        $script:LhmComputer.IsMemoryEnabled = $false
-        $script:LhmComputer.IsControllerEnabled = $false
-        $script:LhmComputer.IsNetworkEnabled = $false
-        $script:LhmComputer.IsPsuEnabled = $false
-        $script:LhmComputer.Open()
-
-        $script:LhmLoaded = $true
-        Write-Log "LibreHardwareMonitor loaded successfully"
-        return $true
-    }
-    catch {
-        Write-Log "LHM load failed: $($_.Exception.Message)" "WARN"
-        if ($_.Exception.InnerException) {
-            Write-Log "  Inner: $($_.Exception.InnerException.Message)" "WARN"
-        }
-        return $false
-    }
-}
-
-function Get-HardwareTemperatures {
-    if (-not (Ensure-Lhm)) { return @{ CPU = $null; GPU = @() } }
-    $temps = @{ CPU = $null; GPU = @() }
-    try {
-        foreach ($hw in $script:LhmComputer.Hardware) {
-            $hw.Update()
-            $isCpu = $hw.HardwareType.ToString() -match 'Cpu'
-            $isGpu = $hw.HardwareType.ToString() -match 'Gpu'
-            if (-not ($isCpu -or $isGpu)) { continue }
-
-            foreach ($sensor in $hw.Sensors) {
-                if ($sensor.SensorType.ToString() -ne "Temperature") { continue }
-                if ($null -eq $sensor.Value) { continue }
-
-                if ($isCpu -and ($sensor.Name -match 'Package|CPU|Tctl' -or -not $temps.CPU)) {
-                    $temps.CPU = [Math]::Round($sensor.Value, 0)
-                }
-                elseif ($isGpu -and $sensor.Name -match 'Core|GPU|Hot Spot|Edge') {
-                    $temps.GPU += [pscustomobject]@{
-                        Name = $hw.Name
-                        SensorName = $sensor.Name
-                        Value = [Math]::Round($sensor.Value, 0)
-                    }
-                }
-            }
-        }
-    } catch { Write-Log "Temperature read failed: $($_.Exception.Message)" "WARN" }
-    return $temps
-}
-
-# ============================================================
 # BUILT-IN TOOLS
 # ============================================================
 
@@ -1087,8 +1003,7 @@ function Install-OfficeODT {
 }
 
 # ============================================================
-# PICKERS (Show-FilePicker and Show-LabelPicker)
-# Kept identical to v1.3.0 - reusing your existing definitions
+# PICKERS
 # ============================================================
 
 function Show-FilePicker {
@@ -1154,7 +1069,7 @@ function Show-LabelPicker {
 }
 
 # ============================================================
-# SYSTEM INFORMATION
+# SYSTEM INFORMATION (no temperatures)
 # ============================================================
 
 function Get-DrivesInfoBlock {
@@ -1219,20 +1134,14 @@ function Update-SystemInformation {
         $usedRam = [Math]::Round($totalRam - $freeRam, 2)
         $up = (Get-Date) - $os.LastBootUpTime
 
-        $temps = Get-HardwareTemperatures
-        $cpuLine = "CPU              : $($cpu.Name)"
-        if ($temps.CPU) { $cpuLine += "  ($($temps.CPU) C)" }
-        $gpuLine = "GPU              : $($gpu.Name)"
-        if ($temps.GPU.Count -gt 0) { $gpuLine += "  ($($temps.GPU[0].Value) C)" }
-
         $lines = New-Object System.Collections.Generic.List[string]
         $lines.Add("Operating System : $($os.Caption)")
         $lines.Add("Version          : $($os.Version)")
         $lines.Add("Computer         : $($env:COMPUTERNAME)")
         $lines.Add("User             : $($env:USERNAME)")
         $lines.Add("")
-        $lines.Add($cpuLine)
-        $lines.Add($gpuLine)
+        $lines.Add("CPU              : $($cpu.Name)")
+        $lines.Add("GPU              : $($gpu.Name)")
         $lines.Add("RAM              : $usedRam GB used of $totalRam GB")
 
         $bl = Get-BatteryInfoLine
@@ -1498,6 +1407,11 @@ $script:InfoTimer.Interval = [TimeSpan]::FromSeconds(10)
 $script:InfoTimer.Add_Tick({ if ($ChkAutoRefresh.IsChecked -eq $true) { Update-SystemInformation } })
 if ($script:Settings.AutoRefresh) { $script:InfoTimer.Start() }
 
+# Refresh tools.json from remote AFTER window opens (background, non-blocking)
+$Window.Add_Loaded({
+    Refresh-ToolCatalogInBackground
+})
+
 # ============================================================
 # EVENT WIRING
 # ============================================================
@@ -1559,7 +1473,6 @@ $Window.Add_Closing({
         $script:Settings.Accent = [string]$CmbAccent.SelectedItem
         Save-AppSettings
     } catch { }
-    try { if ($script:LhmComputer) { $script:LhmComputer.Close() } } catch { }
     try { if ($script:ToastNotifier) { $script:ToastNotifier.Visible = $false; $script:ToastNotifier.Dispose() } } catch { }
     try { Remove-Item -Path $script:TemporaryPath -Recurse -Force -ErrorAction SilentlyContinue } catch { }
     Write-Log "CrazyAlexTool closed"
