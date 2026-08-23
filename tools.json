@@ -91,7 +91,7 @@
     },
     {
       "id": "officeResetMacOS",
-      "label": "Office-Reset tool 2.0 Beta 1 (macOS)",
+      "label": "Office-Reset tool 2.0 Beta1",
       "type": "single-file",
       "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_Reset_2.0.0.pkg",
       "extension": ".pkg",
@@ -102,7 +102,7 @@
     },
     {
       "id": "officeSerializerMacOS",
-      "label": "Activator (Serializer macOS)",
+      "label": "Activator (Serializer)",
       "type": "single-file",
       "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_LTSC_2024_VL_Serializer.pkg",
       "extension": ".pkg",
