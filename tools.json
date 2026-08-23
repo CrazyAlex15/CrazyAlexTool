@@ -1,12 +1,26 @@
 {
-  "version": 7,
+  "version": 8,
+  "categories": [
+    {
+      "id": "office_windows",
+      "label": "OFFICE WINDOWS"
+    },
+    {
+      "id": "office_macos",
+      "label": "OFFICE macOS"
+    },
+    {
+      "id": "scripts",
+      "label": "SCRIPTS"
+    }
+  ],
   "tools": [
     {
       "id": "officeODT",
       "label": "Install Office (ODT)",
       "type": "builtin",
       "action": "Install-OfficeODT",
-      "category": "office",
+      "category": "office_windows",
       "width": 205,
       "tag": "office setup installer microsoft odt"
     },
@@ -16,7 +30,7 @@
       "type": "single-file",
       "url": "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365ProPlusRetail&platform=x64&language=en-us&version=O16GA",
       "extension": ".exe",
-      "category": "office",
+      "category": "office_windows",
       "width": 205,
       "tag": "office 365 pro plus retail x64 en-us"
     },
@@ -26,46 +40,16 @@
       "type": "single-file",
       "url": "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=ProPlus2024Retail&platform=x64&language=en-us&version=O16GA",
       "extension": ".exe",
-      "category": "office",
+      "category": "office_windows",
       "width": 205,
       "tag": "office 2024 pro plus retail x64 en-us"
-    },
-    {
-      "id": "officeMacOS",
-      "label": "Office macOS",
-      "type": "single-file",
-      "url": "https://go.microsoft.com/fwlink/p/?linkid=2009112",
-      "extension": ".pkg",
-      "category": "office",
-      "width": 205,
-      "tag": "office macos mac microsoft installer pkg"
-    },
-    {
-      "id": "officeResetMacOS",
-      "label": "Office-Reset tool 2.0 Beta 1 (macOS)",
-      "type": "single-file",
-      "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_Reset_2.0.0.pkg",
-      "extension": ".pkg",
-      "category": "office",
-      "width": 205,
-      "tag": "office reset tool 2.0 beta 1 macos mac pkg"
-    },
-    {
-      "id": "officeSerializerMacOS",
-      "label": "Activator (Serializer macOS)",
-      "type": "single-file",
-      "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_LTSC_2024_VL_Serializer.pkg",
-      "extension": ".pkg",
-      "category": "office",
-      "width": 205,
-      "tag": "office ltsc 2024 vl serializer activator macos mac pkg"
     },
     {
       "id": "scrubber",
       "label": "Office Scrubber",
       "type": "builtin",
       "action": "Invoke-OfficeScrubber",
-      "category": "office",
+      "category": "office_windows",
       "width": 205,
       "tag": "office scrubber cleanup remove"
     },
@@ -75,7 +59,7 @@
       "type": "single-file",
       "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat",
       "extension": ".bat",
-      "category": "office",
+      "category": "office_windows",
       "width": 205,
       "tag": "office windows tools"
     },
@@ -84,9 +68,39 @@
       "label": "Activate WinRAR",
       "type": "builtin",
       "action": "Activate-WinRAR",
-      "category": "office",
+      "category": "office_windows",
       "width": 205,
       "tag": "winrar activate license key"
+    },
+    {
+      "id": "officeMacOS",
+      "label": "Office macOS",
+      "type": "single-file",
+      "url": "https://go.microsoft.com/fwlink/p/?linkid=2009112",
+      "extension": ".pkg",
+      "category": "office_macos",
+      "width": 205,
+      "tag": "office macos mac microsoft installer pkg"
+    },
+    {
+      "id": "officeResetMacOS",
+      "label": "Office-Reset tool 2.0 Beta 1 (macOS)",
+      "type": "single-file",
+      "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_Reset_2.0.0.pkg",
+      "extension": ".pkg",
+      "category": "office_macos",
+      "width": 205,
+      "tag": "office reset tool 2.0 beta 1 macos mac pkg"
+    },
+    {
+      "id": "officeSerializerMacOS",
+      "label": "Activator (Serializer macOS)",
+      "type": "single-file",
+      "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_LTSC_2024_VL_Serializer.pkg",
+      "extension": ".pkg",
+      "category": "office_macos",
+      "width": 205,
+      "tag": "office ltsc 2024 vl serializer macos mac pkg"
     },
     {
       "id": "genp",
