@@ -15,7 +15,7 @@
 # VERSION MARKER
 # ============================================================
 
-$script:AppVersion = "1.7.2"
+$script:AppVersion = "1.8.1"
 # Keep this source ASCII-safe and save with a UTF-8 BOM for Windows PowerShell 5.1.
 Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
 
@@ -181,10 +181,10 @@ function Start-CrazyAlexToolMacOS {
             $idJs = Escape-JsSingle ([string]$tool.id)
             $labelJs = Escape-JsSingle ([string]$tool.label)
             if ($platform -eq 'windows') {
-                [void]$categoryHtml.Append("<button class='tool disabled' disabled title='Windows-only tool - unavailable on macOS'><span>$labelHtml</span><small>Windows only</small></button>")
+                [void]$categoryHtml.Append("<button class='tool disabled' disabled title='Windows-only tool - unavailable on macOS'><span>$labelHtml</span><small>Windows only</small><div class='mini'><i></i></div></button>")
             }
             else {
-                $buttonHtml = '<button class="tool" onclick="showMacNotice(''{0}'',''{1}'')"><span>{2}</span><small>macOS</small></button>' -f $idJs, $labelJs, $labelHtml
+                $buttonHtml = '<button id="tool-{0}" class="tool" onclick="showMacNotice(''{0}'',''{1}'')"><span>{2}</span><small class="toolstate">Ready - macOS</small><div class="mini"><i></i></div></button>' -f $idJs, $labelJs, $labelHtml
                 [void]$categoryHtml.Append($buttonHtml)
             }
         }
@@ -199,7 +199,7 @@ function Start-CrazyAlexToolMacOS {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CrazyAlexTool $($script:AppVersion)</title>
 <style>
-:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}body{margin:0;background:#111217;color:#f4f6f8}.shell{max-width:1080px;margin:0 auto;padding:36px 26px 70px}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:28px}.title{font-size:30px;font-weight:800;margin:0}.sub{color:#9aa4ad;margin:7px 0 0}.pill{background:#16272b;color:#67e8f9;border:1px solid #27535a;padding:8px 12px;border-radius:999px;font-size:13px}.notice{background:#171a20;border:1px solid #2b3038;border-radius:12px;padding:13px 15px;color:#aeb7c0;margin-bottom:28px}.category{margin:30px 0}.category h2{font-size:16px;color:#67e8f9;letter-spacing:.04em;margin:0 0 13px}.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:12px}.tool{min-height:58px;border:1px solid #343a44;background:#242832;color:#fff;border-radius:10px;padding:10px 13px;text-align:left;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}.tool:hover{background:#2d3540;border-color:#4e6871;transform:translateY(-1px)}.tool small{display:block;margin-top:5px;color:#8fd8e4;font-size:11px;font-weight:600}.tool.disabled{opacity:.38;cursor:not-allowed;background:#1b1d22;border-color:#282b31;transform:none}.tool.disabled small{color:#a1a1aa}.footer{display:flex;gap:12px;align-items:center;margin-top:32px}.exit{border:1px solid #4b5563;background:#20242b;color:#fff;padding:9px 15px;border-radius:8px;cursor:pointer}.status{color:#9aa4ad;font-size:13px}.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.68);align-items:center;justify-content:center;padding:24px;z-index:10}.modal{max-width:680px;width:100%;background:#1b1f26;border:1px solid #39414b;border-radius:14px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.4)}.modal h3{margin:0 0 14px;color:#67e8f9}.modal li{margin:9px 0;line-height:1.45;color:#d3d8dd}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.actions button{padding:9px 14px;border-radius:8px;border:1px solid #444b55;cursor:pointer}.cancel{background:#252932;color:#fff}.continue{background:#0e7490;color:white;border-color:#0891b2!important}
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}body{margin:0;background:#111217;color:#f4f6f8}.shell{max-width:1080px;margin:0 auto;padding:36px 26px 70px}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:28px}.title{font-size:30px;font-weight:800;margin:0}.sub{color:#9aa4ad;margin:7px 0 0}.pill{background:#16272b;color:#67e8f9;border:1px solid #27535a;padding:8px 12px;border-radius:999px;font-size:13px}.notice{background:#171a20;border:1px solid #2b3038;border-radius:12px;padding:13px 15px;color:#aeb7c0;margin-bottom:28px}.category{margin:30px 0}.category h2{font-size:16px;color:#67e8f9;letter-spacing:.04em;margin:0 0 13px}.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:12px}.tool{min-height:58px;border:1px solid #343a44;background:#242832;color:#fff;border-radius:10px;padding:10px 13px;text-align:left;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}.tool:hover{background:#2d3540;border-color:#4e6871;transform:translateY(-1px)}.tool small{display:block;margin-top:5px;color:#8fd8e4;font-size:11px;font-weight:600}.tool.disabled{opacity:.38;cursor:not-allowed;background:#1b1d22;border-color:#282b31;transform:none}.tool.disabled small{color:#a1a1aa}.mini{height:4px;background:#11141a;border-radius:4px;margin-top:8px;overflow:hidden;display:none}.mini>i{display:block;height:100%;width:35%;background:#67e8f9;border-radius:4px}.tool.busy .mini{display:block}.tool.busy .mini>i{animation:slide 1s linear infinite}.tool.done .mini{display:block}.tool.done .mini>i{width:100%;background:#4ade80}.tool.failed .mini{display:block}.tool.failed .mini>i{width:100%;background:#fb7185}@keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(300%)}}.footer{display:flex;gap:12px;align-items:center;margin-top:32px}.exit{border:1px solid #4b5563;background:#20242b;color:#fff;padding:9px 15px;border-radius:8px;cursor:pointer}.status{color:#9aa4ad;font-size:13px}.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.68);align-items:center;justify-content:center;padding:24px;z-index:10}.modal{max-width:680px;width:100%;background:#1b1f26;border:1px solid #39414b;border-radius:14px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.4)}.modal h3{margin:0 0 14px;color:#67e8f9}.modal li{margin:9px 0;line-height:1.45;color:#d3d8dd}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.actions button{padding:9px 14px;border-radius:8px;border:1px solid #444b55;cursor:pointer}.cancel{background:#252932;color:#fff}.continue{background:#0e7490;color:white;border-color:#0891b2!important}
 </style>
 </head>
 <body>
@@ -223,9 +223,34 @@ function Start-CrazyAlexToolMacOS {
 </div>
 <script>
 let pendingId=null,pendingLabel=null;
-function showMacNotice(id,label){pendingId=id;pendingLabel=label;document.getElementById('modalBg').style.display='flex';}
+const activeTools={};
+async function showMacNotice(id,label){
+  if(activeTools[id]){
+    if(confirm('Are you sure you want to cancel '+label+'?\n\nAny partial download will be deleted.')){
+      try{await fetch('/cancel?id='+encodeURIComponent(id));}catch(e){}
+      delete activeTools[id];
+      setMacToolState(id,'','Cancelled');
+      document.getElementById('status').textContent=label+' cancelled.';
+    }
+    return;
+  }
+  pendingId=id;pendingLabel=label;document.getElementById('modalBg').style.display='flex';
+}
 function closeModal(){document.getElementById('modalBg').style.display='none';pendingId=null;pendingLabel=null;}
-async function continueTool(){let id=pendingId,label=pendingLabel;closeModal();if(!id)return;let s=document.getElementById('status');s.textContent='Downloading '+label+'...';try{let r=await fetch('/tool?id='+encodeURIComponent(id));let j=await r.json();s.textContent=j.message||'Finished.';if(!j.ok)alert(j.message||'Tool failed.');}catch(e){s.textContent='Error: '+e;alert('Error: '+e);}}
+function setMacToolState(id,state,msg){let b=document.getElementById('tool-'+id);if(!b)return;b.classList.remove('busy','done','failed');if(state)b.classList.add(state);let t=b.querySelector('.toolstate');if(t)t.textContent=msg||'Ready - macOS';}
+async function pollMacTool(id,label){
+  if(!activeTools[id])return;
+  try{
+    let r=await fetch('/status?id='+encodeURIComponent(id));let j=await r.json();
+    if(j.state==='running'){setMacToolState(id,'busy',j.message||'Downloading...');setTimeout(()=>pollMacTool(id,label),500);return;}
+    delete activeTools[id];
+    document.getElementById('status').textContent=j.message||'Finished.';
+    if(j.state==='completed'){setMacToolState(id,'done','Completed');}
+    else if(j.state==='cancelled'){setMacToolState(id,'','Cancelled');}
+    else{setMacToolState(id,'failed','Failed');alert(j.message||'Tool failed.');}
+  }catch(e){delete activeTools[id];setMacToolState(id,'failed','Failed');alert('Status check failed.\n\n'+e);}
+}
+async function continueTool(){let id=pendingId,label=pendingLabel;closeModal();if(!id)return;let s=document.getElementById('status');s.textContent='Starting '+label+'...';setMacToolState(id,'busy','Starting... click again to cancel');try{let r=await fetch('/tool?id='+encodeURIComponent(id));let j=await r.json();if(!j.ok){setMacToolState(id,'failed','Failed');alert(j.message||'Tool failed.');return;}activeTools[id]=true;s.textContent=j.message||('Downloading '+label+'...');pollMacTool(id,label);}catch(e){setMacToolState(id,'failed','Failed');alert('Download could not start. Check your internet connection and try again.\n\n'+e);}}
 async function quitTool(){try{await fetch('/quit');}catch(e){} window.close();document.body.innerHTML='<div style="font-family:-apple-system;background:#111217;color:white;padding:40px">CrazyAlexTool stopped. You may close this tab.</div>';}
 </script>
 </body></html>
@@ -262,6 +287,7 @@ async function quitTool(){try{await fetch('/quit');}catch(e){} window.close();do
     Write-Host '[i] Keep this terminal open while using the tool.' -ForegroundColor DarkGray
     & /usr/bin/open $prefix
 
+    $macToolJobs = @{}
     $running = $true
     try {
         while ($running -and $listener.IsListening) {
@@ -278,11 +304,73 @@ async function quitTool(){try{await fetch('/quit');}catch(e){} window.close();do
                     Send-MacJson -Context $ctx -Ok $true -Message 'CrazyAlexTool stopped.'
                     $running = $false
                 }
+                elseif ($path -eq '/cancel') {
+                    $id = [string]$ctx.Request.QueryString['id']
+                    if (-not $macToolJobs.ContainsKey($id)) {
+                        Send-MacJson -Context $ctx -Ok $true -Message 'Nothing is running for this tool.'
+                        continue
+                    }
+                    $entry = $macToolJobs[$id]
+                    try { Stop-Job $entry.Job -ErrorAction SilentlyContinue } catch { }
+                    try { Remove-Job $entry.Job -Force -ErrorAction SilentlyContinue } catch { }
+                    try { Remove-Item -LiteralPath $entry.OutFile -Force -ErrorAction SilentlyContinue } catch { }
+                    $macToolJobs.Remove($id)
+                    Send-MacJson -Context $ctx -Ok $true -Message 'Download cancelled.'
+                }
+                elseif ($path -eq '/status') {
+                    $id = [string]$ctx.Request.QueryString['id']
+                    if (-not $macToolJobs.ContainsKey($id)) {
+                        $json = @{ ok=$true; state='cancelled'; message='No active download.' } | ConvertTo-Json -Compress
+                        Send-MacResponse -Context $ctx -Body $json -ContentType 'application/json; charset=utf-8'
+                        continue
+                    }
+                    $entry = $macToolJobs[$id]
+                    $job = $entry.Job
+                    if ($job.State -in @('Running','NotStarted','Blocked')) {
+                        $json = @{ ok=$true; state='running'; message='Downloading... click again to cancel' } | ConvertTo-Json -Compress
+                        Send-MacResponse -Context $ctx -Body $json -ContentType 'application/json; charset=utf-8'
+                        continue
+                    }
+                    if ($job.State -eq 'Completed') {
+                        try {
+                            [void](Receive-Job $job -ErrorAction Stop)
+                            if (-not (Test-Path -LiteralPath $entry.OutFile) -or (Get-Item -LiteralPath $entry.OutFile).Length -le 0) { throw 'The downloaded file is empty.' }
+                            if ($entry.Extension -eq '.pkg') { & /usr/bin/open $entry.OutFile }
+                            else { & /usr/bin/open -R $entry.OutFile }
+                            $message = if ($entry.Extension -eq '.pkg') { "$($entry.Label) downloaded. Installer opened." } else { "$($entry.Label) downloaded to $($entry.OutFile)" }
+                            $json = @{ ok=$true; state='completed'; message=$message } | ConvertTo-Json -Compress
+                            Send-MacResponse -Context $ctx -Body $json -ContentType 'application/json; charset=utf-8'
+                        }
+                        catch {
+                            try { Remove-Item -LiteralPath $entry.OutFile -Force -ErrorAction SilentlyContinue } catch { }
+                            $raw = [string]$_.Exception.Message
+                            $json = @{ ok=$false; state='failed'; message=("Download failed. " + $raw) } | ConvertTo-Json -Compress
+                            Send-MacResponse -Context $ctx -Body $json -ContentType 'application/json; charset=utf-8' -StatusCode 500
+                        }
+                        finally {
+                            try { Remove-Job $job -Force -ErrorAction SilentlyContinue } catch { }
+                            $macToolJobs.Remove($id)
+                        }
+                        continue
+                    }
+                    $reason = ''
+                    try { $reason = [string]$job.ChildJobs[0].JobStateInfo.Reason.Message } catch { }
+                    try { Remove-Item -LiteralPath $entry.OutFile -Force -ErrorAction SilentlyContinue } catch { }
+                    try { Remove-Job $job -Force -ErrorAction SilentlyContinue } catch { }
+                    $macToolJobs.Remove($id)
+                    if ([string]::IsNullOrWhiteSpace($reason)) { $reason = 'Download failed.' }
+                    $json = @{ ok=$false; state='failed'; message=$reason } | ConvertTo-Json -Compress
+                    Send-MacResponse -Context $ctx -Body $json -ContentType 'application/json; charset=utf-8' -StatusCode 500
+                }
                 elseif ($path -eq '/tool') {
                     $id = [string]$ctx.Request.QueryString['id']
                     $tool = @($catalog.tools | Where-Object { [string]$_.id -eq $id }) | Select-Object -First 1
                     if (-not $tool) {
                         Send-MacJson -Context $ctx -Ok $false -Message 'Tool not found.' -StatusCode 404
+                        continue
+                    }
+                    if ($macToolJobs.ContainsKey($id)) {
+                        Send-MacJson -Context $ctx -Ok $false -Message 'This tool is already running. Click it again to cancel.' -StatusCode 409
                         continue
                     }
 
@@ -306,27 +394,22 @@ async function quitTool(){try{await fetch('/quit');}catch(e){} window.close();do
                     if ([string]::IsNullOrWhiteSpace($leaf) -or -not $leaf.ToLowerInvariant().EndsWith($ext.ToLowerInvariant())) {
                         $leaf = ([string]$tool.id) + $ext
                     }
-                    $leaf = [regex]::Replace($leaf, '[\\/:*?"<>|]', '_')
+                    $leaf = [regex]::Replace($leaf, '[\/:*?"<>|]', '_')
                     $outFile = Join-Path $downloadFolder $leaf
 
                     try {
-                        Write-Host "[i] Downloading $($tool.label)..." -ForegroundColor Yellow
-                        Invoke-WebRequest -Uri ([string]$tool.url) -OutFile $outFile -TimeoutSec 180 -ErrorAction Stop
-                        if (-not (Test-Path -LiteralPath $outFile) -or (Get-Item -LiteralPath $outFile).Length -le 0) {
-                            throw 'The downloaded file is empty.'
-                        }
-                        if ($ext.ToLowerInvariant() -eq '.pkg') {
-                            & /usr/bin/open $outFile
-                            Send-MacJson -Context $ctx -Ok $true -Message "$($tool.label) downloaded. Installer opened."
-                        }
-                        else {
-                            & /usr/bin/open -R $outFile
-                            Send-MacJson -Context $ctx -Ok $true -Message "$($tool.label) downloaded to $outFile"
-                        }
+                        $job = Start-Job -ScriptBlock {
+                            param($Url,$OutFile)
+                            Invoke-WebRequest -Uri $Url -OutFile $OutFile -TimeoutSec 180 -ErrorAction Stop
+                            if (-not (Test-Path -LiteralPath $OutFile) -or (Get-Item -LiteralPath $OutFile).Length -le 0) { throw 'The downloaded file is empty.' }
+                            $OutFile
+                        } -ArgumentList ([string]$tool.url),$outFile
+                        $macToolJobs[$id] = [pscustomobject]@{ Job=$job; OutFile=$outFile; Extension=$ext.ToLowerInvariant(); Label=[string]$tool.label }
+                        Send-MacJson -Context $ctx -Ok $true -Message "Downloading $($tool.label)... Click the same button again to cancel."
                     }
                     catch {
                         try { Remove-Item -LiteralPath $outFile -Force -ErrorAction SilentlyContinue } catch { }
-                        Send-MacJson -Context $ctx -Ok $false -Message "Download failed: $($_.Exception.Message)" -StatusCode 500
+                        Send-MacJson -Context $ctx -Ok $false -Message ("Could not start download: " + $_.Exception.Message) -StatusCode 500
                     }
                 }
                 else {
@@ -346,6 +429,11 @@ async function quitTool(){try{await fetch('/quit');}catch(e){} window.close();do
             try { Stop-Job $refreshJob -ErrorAction SilentlyContinue } catch { }
             try { Remove-Job $refreshJob -Force -ErrorAction SilentlyContinue } catch { }
         }
+        foreach ($entry in @($macToolJobs.Values)) {
+            try { Stop-Job $entry.Job -ErrorAction SilentlyContinue } catch { }
+            try { Remove-Job $entry.Job -Force -ErrorAction SilentlyContinue } catch { }
+        }
+        $macToolJobs.Clear()
 
         # Remove every macOS package/file downloaded by this tool when it closes.
         # This folder is dedicated to CrazyAlexTool, so deleting it is safe.
@@ -387,7 +475,7 @@ $leftoverVarNames = @(
     "ChkAutoRefresh", "ChkShowToasts", "ChkEnableLog",
     "CmbAccent", "BtnSaveSettings", "BtnResetSettings",
     "BtnUpdateTool", "BtnOpenAppData", "BtnViewLog",
-    "ActiveJobs", "JobPoller",
+    "ActiveJobs", "JobPoller", "ActiveToolOperations",
     "ToolCatalog", "ToastNotifier"
 )
 
@@ -525,6 +613,7 @@ $script:DefaultSettings = [ordered]@{
 
 $script:Settings = [ordered]@{}
 $script:ActiveJobs = @{}
+$script:ActiveToolOperations = @{}
 $script:ToolCatalog = @()
 $script:SessionDownloadFiles = New-Object System.Collections.Generic.List[string]
 
@@ -1193,10 +1282,191 @@ function New-Brush {
     return $conv.ConvertFromString($Color)
 }
 
+$script:ToolUi = @{}
+$script:CurrentToolId = $null
+
+function Set-ToolVisualState {
+    param(
+        [string]$ToolId,
+        [string]$State = "Ready",
+        [string]$Message = "",
+        [Nullable[double]]$Percent = $null,
+        [switch]$Indeterminate
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ToolId) -or -not $script:ToolUi.ContainsKey($ToolId)) { return }
+    $ui = $script:ToolUi[$ToolId]
+    if (-not $ui) { return }
+
+    $display = if ([string]::IsNullOrWhiteSpace($Message)) { $State } else { $Message }
+    $ui.Status.Text = $display
+
+    $stateColor = switch ($State.ToLowerInvariant()) {
+        "downloading" { "#67E8F9" }
+        "running"     { "#FACC15" }
+        "completed"   { "#4ADE80" }
+        "error"       { "#FB7185" }
+        "cancelled"   { "#FBBF24" }
+        "cancelling"  { "#FBBF24" }
+        default       { "#8B949E" }
+    }
+    $ui.Status.Foreground = New-Brush $stateColor
+    $ui.Progress.Foreground = New-Brush $stateColor
+
+    if ($Indeterminate.IsPresent) {
+        $ui.Progress.Visibility = [System.Windows.Visibility]::Visible
+        $ui.Progress.IsIndeterminate = $true
+    }
+    elseif ($null -ne $Percent) {
+        $ui.Progress.Visibility = [System.Windows.Visibility]::Visible
+        $ui.Progress.IsIndeterminate = $false
+        $ui.Progress.Value = [Math]::Max(0, [Math]::Min(100, [double]$Percent))
+    }
+    elseif ($State -in @("Ready","Completed","Error","Cancelled")) {
+        $ui.Progress.IsIndeterminate = $false
+        if ($State -eq "Completed") { $ui.Progress.Value = 100 } else { $ui.Progress.Value = 0 }
+        $ui.Progress.Visibility = [System.Windows.Visibility]::Collapsed
+    }
+}
+
+function Get-ToolOperation {
+    param([string]$ToolId)
+    if ([string]::IsNullOrWhiteSpace($ToolId)) { return $null }
+    if ($script:ActiveToolOperations.ContainsKey($ToolId)) { return $script:ActiveToolOperations[$ToolId] }
+    return $null
+}
+
+function Begin-ToolOperation {
+    param([string]$ToolId, [string]$Label)
+    $op = [pscustomobject]@{
+        ToolId = $ToolId
+        Label = $Label
+        CancelRequested = $false
+        Request = $null
+        Process = $null
+        Started = Get-Date
+    }
+    $script:ActiveToolOperations[$ToolId] = $op
+    if ($script:ToolUi.ContainsKey($ToolId)) {
+        $script:ToolUi[$ToolId].Button.ToolTip = "This tool is running. Click it again to cancel."
+    }
+    return $op
+}
+
+function End-ToolOperation {
+    param([string]$ToolId)
+    if ([string]::IsNullOrWhiteSpace($ToolId)) { return }
+    if ($script:ActiveToolOperations.ContainsKey($ToolId)) {
+        $script:ActiveToolOperations.Remove($ToolId)
+    }
+    if ($script:ToolUi.ContainsKey($ToolId)) {
+        $script:ToolUi[$ToolId].Button.ToolTip = $null
+    }
+}
+
+function Test-ToolCancelRequested {
+    param([string]$ToolId = $script:CurrentToolId)
+    $op = Get-ToolOperation -ToolId $ToolId
+    return ($null -ne $op -and [bool]$op.CancelRequested)
+}
+
+function New-ToolCancelledException {
+    param([string]$Message = "The operation was cancelled by the user.")
+    return (New-Object System.OperationCanceledException -ArgumentList $Message)
+}
+
+function Test-IsToolCancellationException {
+    param([object]$Exception)
+    $ex = $Exception
+    if ($Exception -and $Exception.Exception) { $ex = $Exception.Exception }
+    if ($ex -is [System.OperationCanceledException]) { return $true }
+    if ($ex -and $ex.Message -match 'cancelled by the user|operation was canceled|operation was cancelled|request was aborted') {
+        return (Test-ToolCancelRequested)
+    }
+    return $false
+}
+
+function Stop-ToolProcessTree {
+    param([System.Diagnostics.Process]$Process)
+    if (-not $Process) { return }
+    try { if ($Process.HasExited) { return } } catch { return }
+    try {
+        Start-Process -FilePath "taskkill.exe" -ArgumentList "/PID $($Process.Id) /T /F" -WindowStyle Hidden -Wait -ErrorAction Stop | Out-Null
+    }
+    catch {
+        try { $Process.Kill() } catch { }
+    }
+}
+
+function Request-ToolCancellation {
+    param([string]$ToolId)
+    $op = Get-ToolOperation -ToolId $ToolId
+    if (-not $op) { return $false }
+
+    $result = [System.Windows.MessageBox]::Show(
+        "Are you sure you want to cancel $($op.Label)?`n`nAny temporary partial download will be deleted.",
+        "Cancel $($op.Label)?",
+        [System.Windows.MessageBoxButton]::YesNo,
+        [System.Windows.MessageBoxImage]::Warning
+    )
+    if ($result -ne [System.Windows.MessageBoxResult]::Yes) { return $false }
+
+    $op.CancelRequested = $true
+    Set-ToolVisualState -ToolId $ToolId -State "Cancelling" -Message "Cancelling..." -Indeterminate
+    Set-Progress -Indeterminate -Text "Cancelling..."
+    $StatusText.Text = "Cancelling $($op.Label)..."
+    $StatusText.Foreground = New-Brush "#FBBF24"
+
+    try { if ($op.Request) { $op.Request.Abort() } } catch { }
+    try { if ($op.Process) { Stop-ToolProcessTree -Process $op.Process } } catch { }
+    return $true
+}
+
+function Start-CancellableProcess {
+    param(
+        [string]$FilePath,
+        [string]$ArgumentList = "",
+        [string]$WorkingDirectory = "",
+        [string]$ToolId = $script:CurrentToolId
+    )
+
+    $startArgs = @{ FilePath=$FilePath; PassThru=$true; ErrorAction='Stop' }
+    if (-not [string]::IsNullOrWhiteSpace($ArgumentList)) { $startArgs.ArgumentList = $ArgumentList }
+    if (-not [string]::IsNullOrWhiteSpace($WorkingDirectory)) { $startArgs.WorkingDirectory = $WorkingDirectory }
+    $process = Start-Process @startArgs
+
+    $op = Get-ToolOperation -ToolId $ToolId
+    if ($op) { $op.Process = $process }
+    try {
+        while (-not $process.HasExited) {
+            if (Test-ToolCancelRequested -ToolId $ToolId) {
+                Stop-ToolProcessTree -Process $process
+                throw (New-ToolCancelledException)
+            }
+            Pump-UI
+            Start-Sleep -Milliseconds 100
+        }
+        try { $process.Refresh() } catch { }
+        if (Test-ToolCancelRequested -ToolId $ToolId) { throw (New-ToolCancelledException) }
+        return $process
+    }
+    finally {
+        if ($op) { $op.Process = $null }
+    }
+}
+
 function Set-Status {
     param([string]$Message, [string]$Color = "#AAAAAA")
     $StatusText.Text = $Message
     $StatusText.Foreground = New-Brush $Color
+
+    # Mirror meaningful status changes onto the button that launched the action.
+    if (-not [string]::IsNullOrWhiteSpace($script:CurrentToolId)) {
+        if ($Color -eq "#00FF00") { Set-ToolVisualState -ToolId $script:CurrentToolId -State "Completed" -Message $Message }
+        elseif ($Color -eq "#FF5555") { Set-ToolVisualState -ToolId $script:CurrentToolId -State "Error" -Message $Message }
+        elseif ($Color -eq "#FFAA00") { Set-ToolVisualState -ToolId $script:CurrentToolId -State "Cancelled" -Message $Message }
+        elseif ($Color -eq "#FFFF00") { Set-ToolVisualState -ToolId $script:CurrentToolId -State "Running" -Message $Message }
+    }
 }
 
 function Set-Progress {
@@ -1217,14 +1487,102 @@ function Pump-UI {
     } catch { }
 }
 
+function Get-FriendlyToolError {
+    param([object]$Exception, [string]$Url = "")
+
+    $raw = "Unknown error."
+    $ex = $null
+    if ($Exception) {
+        if ($Exception.Exception) { $ex = $Exception.Exception } else { $ex = $Exception }
+        if ($ex -and $ex.Message) { $raw = [string]$ex.Message }
+    }
+
+    $headline = "The operation could not be completed."
+    $suggestion = "Try again. If the problem continues, open the log from Settings for more details."
+    $code = ""
+
+    if ($ex -is [System.Net.WebException]) {
+        $status = $ex.Status
+        if ($status -eq [System.Net.WebExceptionStatus]::Timeout) {
+            $headline = "The download timed out."
+            $suggestion = "Check your internet connection and try again. The download server may also be responding slowly."
+        }
+        elseif ($status -eq [System.Net.WebExceptionStatus]::NameResolutionFailure) {
+            $headline = "The download server could not be found."
+            $suggestion = "Check your internet/DNS connection and make sure the download URL is still valid."
+        }
+        elseif ($status -eq [System.Net.WebExceptionStatus]::ConnectFailure) {
+            $headline = "Could not connect to the download server."
+            $suggestion = "Check your internet connection, firewall, VPN, or proxy and try again."
+        }
+        elseif ($status -eq [System.Net.WebExceptionStatus]::TrustFailure) {
+            $headline = "The secure HTTPS connection could not be verified."
+            $suggestion = "Check the PC date/time and Windows certificate updates, then try again."
+        }
+        elseif ($status -eq [System.Net.WebExceptionStatus]::ProtocolError) {
+            try {
+                $response = $ex.Response
+                if ($response -and $response.StatusCode) {
+                    $httpCode = [int]$response.StatusCode
+                    $code = "HTTP $httpCode"
+                    switch ($httpCode) {
+                        401 { $headline = "The server requires authorization."; $suggestion = "The download link may no longer be public." }
+                        403 { $headline = "The server refused the download (HTTP 403)."; $suggestion = "The link may be restricted, expired, or blocked by the provider." }
+                        404 { $headline = "The download file was not found (HTTP 404)."; $suggestion = "The link in tools.json is probably outdated or the file was renamed/moved." }
+                        429 { $headline = "The server is rate-limiting downloads (HTTP 429)."; $suggestion = "Try again later or use a different network if appropriate." }
+                        {$_ -ge 500} { $headline = "The download server is having a problem (HTTP $httpCode)."; $suggestion = "Try again later; the remote server returned an error." }
+                        default { $headline = "The server rejected the request (HTTP $httpCode)." }
+                    }
+                }
+            } catch { }
+        }
+    }
+    elseif ($ex -is [System.UnauthorizedAccessException]) {
+        $headline = "Windows denied access to the file or folder."
+        $suggestion = "Try a different temporary/download folder or run the tool with the required administrator rights."
+    }
+    elseif ($ex -is [System.IO.IOException]) {
+        $headline = "Windows could not read or write the required file."
+        $suggestion = "Check free disk space, folder permissions, and whether another program is locking the file."
+    }
+    elseif ($raw -match 'Only HTTPS') {
+        $headline = "The download link is not HTTPS."
+        $suggestion = "Update the tool URL in tools.json to a secure https:// address."
+    }
+    elseif ($raw -match 'empty') {
+        $headline = "The server returned an empty download."
+        $suggestion = "The download link may be a webpage/redirect instead of the actual file. Verify the direct link in tools.json."
+    }
+
+    [pscustomobject]@{ Headline=$headline; Suggestion=$suggestion; Technical=$raw; Code=$code; Url=$Url }
+}
+
 function Show-ToolError {
-    param([string]$Name, [object]$Exception)
-    $message = if ($Exception) { $Exception.Exception.Message } else { "Unknown error." }
-    Write-Log "ERROR in $Name : $message" "ERROR"
-    Set-Status "Error: $Name" "#FF5555"
-    Set-Progress -Percent 0
+    param([string]$Name, [object]$Exception, [string]$Url = "")
+    if (Test-IsToolCancellationException -Exception $Exception) {
+        Write-Log "$Name cancelled by user" "INFO"
+        Set-Status "$Name cancelled." "#FFAA00"
+        if (-not [string]::IsNullOrWhiteSpace($script:CurrentToolId)) {
+            Set-ToolVisualState -ToolId $script:CurrentToolId -State "Cancelled" -Message "Cancelled"
+        }
+        Set-Progress -Percent 0 -Text "Cancelled"
+        return
+    }
+    $info = Get-FriendlyToolError -Exception $Exception -Url $Url
+    Write-Log "ERROR in $Name : $($info.Technical)" "ERROR"
+    Set-Status "$Name failed." "#FF5555"
+    if (-not [string]::IsNullOrWhiteSpace($script:CurrentToolId)) {
+        Set-ToolVisualState -ToolId $script:CurrentToolId -State "Error" -Message "Failed"
+    }
+    Set-Progress -Percent 0 -Text "Failed"
+
+    $details = "$($info.Headline)`n`nWhat you can try:`n$($info.Suggestion)"
+    if (-not [string]::IsNullOrWhiteSpace($info.Code)) { $details += "`n`n$($info.Code)" }
+    if (-not [string]::IsNullOrWhiteSpace($Url)) { $details += "`n`nSource:`n$Url" }
+    $details += "`n`nTechnical details:`n$($info.Technical)"
+
     [System.Windows.MessageBox]::Show(
-        "$Name`n`n$message", "CrazyAlexTool Error",
+        "$Name`n`n$details", "CrazyAlexTool - $Name failed",
         [System.Windows.MessageBoxButton]::OK,
         [System.Windows.MessageBoxImage]::Error
     ) | Out-Null
@@ -1323,41 +1681,123 @@ $script:JobPoller.Start()
 # ============================================================
 
 function Invoke-TrackedDownload {
-    param([string]$Url, [string]$OutputFile)
+    param(
+        [string]$Url,
+        [string]$OutputFile,
+        [string]$ToolId = $script:CurrentToolId,
+        [string]$DisplayName = "Download"
+    )
     if ($Url -notmatch '^https://') { throw "Only HTTPS downloads are allowed." }
     $parent = Split-Path -Path $OutputFile -Parent
     if (-not (Test-Path $parent)) { New-Item -Path $parent -ItemType Directory -Force | Out-Null }
 
     $req = [System.Net.HttpWebRequest]::Create($Url)
-    $req.UserAgent = "CrazyAlexTool"
+    $op = Get-ToolOperation -ToolId $ToolId
+    if ($op) { $op.Request = $req }
+    $req.UserAgent = "CrazyAlexTool/$($script:AppVersion)"
     $req.AllowAutoRedirect = $true
+    $req.Timeout = 30000
+    $req.ReadWriteTimeout = 30000
     $resp = $null; $in = $null; $out = $null
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
     try {
-        $resp = $req.GetResponse()
+        if (-not [string]::IsNullOrWhiteSpace($ToolId)) {
+            Set-ToolVisualState -ToolId $ToolId -State "Downloading" -Message "Connecting..." -Indeterminate
+        }
+        Set-Progress -Indeterminate -Text "Connecting..."
+        Pump-UI
+
+        if (Test-ToolCancelRequested -ToolId $ToolId) { throw (New-ToolCancelledException) }
+        $responseAsync = $req.BeginGetResponse($null, $null)
+        try {
+            while (-not $responseAsync.AsyncWaitHandle.WaitOne(100)) {
+                Pump-UI
+                if (Test-ToolCancelRequested -ToolId $ToolId) {
+                    try { $req.Abort() } catch { }
+                    throw (New-ToolCancelledException)
+                }
+            }
+            $resp = $req.EndGetResponse($responseAsync)
+        }
+        finally {
+            try { $responseAsync.AsyncWaitHandle.Close() } catch { }
+        }
+        if (Test-ToolCancelRequested -ToolId $ToolId) { throw (New-ToolCancelledException) }
         $in = $resp.GetResponseStream()
         $out = New-Object System.IO.FileStream($OutputFile, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
         $total = $resp.ContentLength
         $done = [int64]0
         $buffer = New-Object byte[] 65536
-        if ($total -gt 0) { Set-Progress -Percent 0 -Text "0%" } else { Set-Progress -Indeterminate -Text "Downloading" }
+        $lastUi = [DateTime]::MinValue
+
+        if ($total -gt 0) {
+            Set-Progress -Percent 0 -Text "0%"
+            if (-not [string]::IsNullOrWhiteSpace($ToolId)) { Set-ToolVisualState -ToolId $ToolId -State "Downloading" -Message "0%" -Percent 0 }
+        }
+        else {
+            Set-Progress -Indeterminate -Text "Downloading..."
+            if (-not [string]::IsNullOrWhiteSpace($ToolId)) { Set-ToolVisualState -ToolId $ToolId -State "Downloading" -Message "Downloading..." -Indeterminate }
+        }
+
         while ($true) {
-            $r = $in.Read($buffer, 0, $buffer.Length)
+            if (Test-ToolCancelRequested -ToolId $ToolId) { throw (New-ToolCancelledException) }
+            $readAsync = $in.BeginRead($buffer, 0, $buffer.Length, $null, $null)
+            try {
+                while (-not $readAsync.AsyncWaitHandle.WaitOne(100)) {
+                    Pump-UI
+                    if (Test-ToolCancelRequested -ToolId $ToolId) {
+                        try { $req.Abort() } catch { }
+                        throw (New-ToolCancelledException)
+                    }
+                }
+                $r = $in.EndRead($readAsync)
+            }
+            finally {
+                try { $readAsync.AsyncWaitHandle.Close() } catch { }
+            }
             if ($r -le 0) { break }
             $out.Write($buffer, 0, $r)
             $done += $r
-            if ($total -gt 0) {
-                $pct = ($done / $total) * 100
+
+            # Updating WPF for every 64 KB chunk can slow fast downloads, so cap UI refreshes.
+            if (((Get-Date) - $lastUi).TotalMilliseconds -ge 90) {
+                $elapsed = [Math]::Max($sw.Elapsed.TotalSeconds, 0.1)
+                $speed = ($done / 1MB) / $elapsed
                 $dMb = [Math]::Round($done / 1MB, 1)
-                $tMb = [Math]::Round($total / 1MB, 1)
-                Set-Progress -Percent $pct -Text "$dMb MB / $tMb MB"
+                if ($total -gt 0) {
+                    $pct = ($done / $total) * 100
+                    $tMb = [Math]::Round($total / 1MB, 1)
+                    $short = "{0:N0}% - {1:N1} MB/s" -f $pct, $speed
+                    $globalText = "{0:N0}%  |  {1:N1} / {2:N1} MB  |  {3:N1} MB/s" -f $pct, $dMb, $tMb, $speed
+                    Set-Progress -Percent $pct -Text $globalText
+                    if (-not [string]::IsNullOrWhiteSpace($ToolId)) { Set-ToolVisualState -ToolId $ToolId -State "Downloading" -Message $short -Percent $pct }
+                }
+                else {
+                    $globalText = "{0:N1} MB  |  {1:N1} MB/s" -f $dMb, $speed
+                    Set-Progress -Indeterminate -Text $globalText
+                    if (-not [string]::IsNullOrWhiteSpace($ToolId)) { Set-ToolVisualState -ToolId $ToolId -State "Downloading" -Message ("{0:N1} MB - {1:N1} MB/s" -f $dMb,$speed) -Indeterminate }
+                }
+                Pump-UI
+                $lastUi = Get-Date
             }
-            Pump-UI
         }
-        Set-Progress -Percent 100 -Text "Complete"
-    } catch {
+
+        if ($done -le 0) { throw "The downloaded file is empty." }
+        Set-Progress -Percent 100 -Text "Download complete"
+        if (-not [string]::IsNullOrWhiteSpace($ToolId)) { Set-ToolVisualState -ToolId $ToolId -State "Running" -Message "Download complete" -Percent 100 }
+    }
+    catch {
         Remove-Item -Path $OutputFile -Force -ErrorAction SilentlyContinue
+        if ((Test-ToolCancelRequested -ToolId $ToolId) -or (Test-IsToolCancellationException -Exception $_)) {
+            if (-not [string]::IsNullOrWhiteSpace($ToolId)) { Set-ToolVisualState -ToolId $ToolId -State "Cancelled" -Message "Cancelled" }
+            throw (New-ToolCancelledException)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ToolId)) { Set-ToolVisualState -ToolId $ToolId -State "Error" -Message "Download failed" }
         throw
-    } finally {
+    }
+    finally {
+        if ($op) { $op.Request = $null }
+        $sw.Stop()
         if ($out) { $out.Dispose() }
         if ($in) { $in.Dispose() }
         if ($resp) { $resp.Dispose() }
@@ -1371,9 +1811,9 @@ function Start-DownloadedFile {
     $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
     if ($ext -in @(".bat", ".cmd")) {
         $wrap = "/d /c `"pushd `"$dir`" && call `"$Path`" & if errorlevel 1 (echo. & echo [Error] Press any key... & pause>nul)`""
-        Start-Process -FilePath "cmd.exe" -ArgumentList $wrap -WorkingDirectory $dir -Wait
+        [void](Start-CancellableProcess -FilePath "cmd.exe" -ArgumentList $wrap -WorkingDirectory $dir)
     } else {
-        Start-Process -FilePath $Path -WorkingDirectory $dir -Wait
+        [void](Start-CancellableProcess -FilePath $Path -WorkingDirectory $dir)
     }
 }
 
@@ -1396,13 +1836,13 @@ function Invoke-SingleFileTool {
             $filePath = Join-Path $downloadFolder "$Name$Extension"
             Write-Log "Downloading macOS package: $Name"
             Set-Status "Downloading $Name..." "#FFFF00"
-            Invoke-TrackedDownload -Url $Url -OutputFile $filePath
+            Invoke-TrackedDownload -Url $Url -OutputFile $filePath -ToolId $script:CurrentToolId -DisplayName $Name
             Register-SessionDownload -Path $filePath
             Set-Status "$Name downloaded." "#00FF00"
             Show-Toast "Download finished" "$Name was saved to $filePath"
             Start-Process -FilePath "explorer.exe" -ArgumentList "/select,`"$filePath`"" -ErrorAction SilentlyContinue | Out-Null
         }
-        catch { Show-ToolError -Name $Name -Exception $_ }
+        catch { Show-ToolError -Name $Name -Exception $_ -Url $Url }
         return
     }
 
@@ -1410,12 +1850,12 @@ function Invoke-SingleFileTool {
     try {
         Write-Log "Running single-file tool: $Name"
         Set-Status "Downloading $Name..." "#FFFF00"
-        Invoke-TrackedDownload -Url $Url -OutputFile $filePath
+        Invoke-TrackedDownload -Url $Url -OutputFile $filePath -ToolId $script:CurrentToolId -DisplayName $Name
         Set-Status "Running $Name..." "#FFFF00"
         Start-DownloadedFile -Path $filePath
         Set-Status "$Name completed." "#00FF00"
         Show-Toast "Tool finished" "$Name completed successfully"
-    } catch { Show-ToolError -Name $Name -Exception $_ }
+    } catch { Show-ToolError -Name $Name -Exception $_ -Url $Url }
     finally { Remove-Item -Path $filePath -Force -ErrorAction SilentlyContinue }
 }
 
@@ -1498,7 +1938,7 @@ function Invoke-OfficeScrubber {
         $wd = $scrubberCmd.DirectoryName
         $cp = $scrubberCmd.FullName
         $wrap = "/d /c ""pushd """"$wd"""" && (echo $($sel.Key)& echo 0) | """"$cp"""" & if errorlevel 1 (echo. & echo [Error] Press any key... & pause>nul)"""
-        Start-Process -FilePath "cmd.exe" -ArgumentList $wrap -WorkingDirectory $wd -Wait
+        [void](Start-CancellableProcess -FilePath "cmd.exe" -ArgumentList $wrap -WorkingDirectory $wd)
 
         Set-Progress -Percent 100 -Text "Complete"
         Set-Status "Office Scrubber finished: $($sel.Label)" "#00FF00"
@@ -1552,7 +1992,7 @@ function Install-OfficeODT {
         Invoke-TrackedDownload -Url $odtUrl -OutputFile $odtExe
 
         Set-Status "Extracting ODT..." "#FFFF00"
-        $p = Start-Process -FilePath $odtExe -ArgumentList "/extract:`"$odtFolder`" /quiet" -Wait -PassThru
+        $p = Start-CancellableProcess -FilePath $odtExe -ArgumentList "/extract:`"$odtFolder`" /quiet" -WorkingDirectory $odtFolder
         if ($p.ExitCode -ne 0) { throw "Failed to extract ODT." }
 
         $configXml = @"
@@ -1572,7 +2012,7 @@ function Install-OfficeODT {
         $setup = Join-Path $odtFolder "setup.exe"
         if (-not (Test-Path $setup)) { throw "setup.exe not found." }
         Set-Status "Launching Office installer..." "#FFFF00"
-        Start-Process -FilePath $setup -ArgumentList "/configure `"$cfg`"" -Wait
+        [void](Start-CancellableProcess -FilePath $setup -ArgumentList "/configure `"$cfg`"" -WorkingDirectory $odtFolder)
         Set-Status "Office setup finished." "#00FF00"
         Show-Toast "Office setup finished" "Installer completed"
     } catch { Show-ToolError -Name "Office (ODT)" -Exception $_ }
@@ -2008,6 +2448,7 @@ function Build-ToolPanels {
     $CategoryHost.Children.Clear()
     $script:CategoryPanels = @{}
     $script:CategoryHeaders = @()
+    $script:ToolUi = @{}
 
     $categoryIndex = 0
     foreach ($category in $script:ToolCategories) {
@@ -2036,23 +2477,86 @@ function Build-ToolPanels {
 
     foreach ($tool in $script:ToolCatalog) {
         $btn = New-Object System.Windows.Controls.Button
-        $btn.Content = $tool.label
         $btn.Width = [double]($tool.width)
-        $btn.Height = 48
+        $btn.Height = 66
         $btn.Style = $Window.FindResource("ToolButton")
         $btn.Tag = $tool.tag
         $btn.Name = "BtnTool_$($tool.id)"
+
+        $content = New-Object System.Windows.Controls.Grid
+        $content.Width = [Math]::Max(120, [double]$tool.width - 30)
+        $r1 = New-Object System.Windows.Controls.RowDefinition; $r1.Height = [System.Windows.GridLength]::Auto
+        $r2 = New-Object System.Windows.Controls.RowDefinition; $r2.Height = [System.Windows.GridLength]::Auto
+        $r3 = New-Object System.Windows.Controls.RowDefinition; $r3.Height = New-Object System.Windows.GridLength -ArgumentList 5
+        [void]$content.RowDefinitions.Add($r1); [void]$content.RowDefinitions.Add($r2); [void]$content.RowDefinitions.Add($r3)
+
+        $label = New-Object System.Windows.Controls.TextBlock
+        $label.Text = [string]$tool.label
+        $label.Foreground = New-Brush "#FFFFFF"
+        $label.FontWeight = [System.Windows.FontWeights]::SemiBold
+        $label.TextAlignment = [System.Windows.TextAlignment]::Center
+        $label.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
+        [System.Windows.Controls.Grid]::SetRow($label,0)
+        [void]$content.Children.Add($label)
+
+        $state = New-Object System.Windows.Controls.TextBlock
+        $state.Text = "Ready"
+        $state.Foreground = New-Brush "#8B949E"
+        $state.FontSize = 10
+        $state.Margin = New-Object System.Windows.Thickness -ArgumentList 0,3,0,3
+        $state.TextAlignment = [System.Windows.TextAlignment]::Center
+        $state.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
+        [System.Windows.Controls.Grid]::SetRow($state,1)
+        [void]$content.Children.Add($state)
+
+        $mini = New-Object System.Windows.Controls.ProgressBar
+        $mini.Height = 4
+        $mini.Minimum = 0; $mini.Maximum = 100; $mini.Value = 0
+        $mini.Background = New-Brush "#16181D"
+        $mini.Foreground = New-Brush "#67E8F9"
+        $mini.Visibility = [System.Windows.Visibility]::Collapsed
+        [System.Windows.Controls.Grid]::SetRow($mini,2)
+        [void]$content.Children.Add($mini)
+
+        $btn.Content = $content
+        $script:ToolUi[[string]$tool.id] = @{ Button=$btn; Label=$label; Status=$state; Progress=$mini }
+
         $btn.Add_Click({
             param($sender, $args)
             $id = $sender.Name.Substring(8)
             $t = $script:ToolCatalog | Where-Object { $_.id -eq $id } | Select-Object -First 1
             if (-not $t) { return }
 
+            # Clicking the same active button acts as Cancel. This works during
+            # downloads and launched child processes because those loops pump WPF messages.
+            if ($script:ActiveToolOperations.ContainsKey($id)) {
+                [void](Request-ToolCancellation -ToolId $id)
+                return
+            }
+
+            if ($script:ActiveToolOperations.Count -gt 0) {
+                $other = @($script:ActiveToolOperations.Values | Select-Object -First 1)[0]
+                [System.Windows.MessageBox]::Show(
+                    "Another tool is already running: $($other.Label)`n`nFinish or cancel it before starting another tool.",
+                    "Tool already running",
+                    [System.Windows.MessageBoxButton]::OK,
+                    [System.Windows.MessageBoxImage]::Information
+                ) | Out-Null
+                return
+            }
+
+            $script:CurrentToolId = $id
+            [void](Begin-ToolOperation -ToolId $id -Label ([string]$t.label))
+            Set-ToolVisualState -ToolId $id -State "Running" -Message "Starting... click again to cancel" -Percent 0
+
             # macOS-only tools remain downloadable from Windows, but Windows
             # always warns that the selected package cannot run on this OS.
             if ((Get-CatalogToolPlatform $t) -eq "macos") {
                 if (-not (Show-OfficeMacOSInstructions)) {
                     Set-Status "macOS tool cancelled." "#FFAA00"
+                    Set-ToolVisualState -ToolId $id -State "Cancelled" -Message "Cancelled"
+                    End-ToolOperation -ToolId $id
+                    $script:CurrentToolId = $null
                     return
                 }
             }
@@ -2065,7 +2569,14 @@ function Build-ToolPanels {
                 else {
                     throw "Unsupported tool type '$($t.type)' for '$($t.id)'."
                 }
-            } catch { Show-ToolError -Name $t.label -Exception $_ }
+            }
+            catch {
+                Show-ToolError -Name ([string]$t.label) -Exception $_ -Url ([string]$t.url)
+            }
+            finally {
+                End-ToolOperation -ToolId $id
+                $script:CurrentToolId = $null
+            }
         })
 
         $categoryId = [string]$tool.category
@@ -2268,6 +2779,20 @@ $Window.Add_ContentRendered({
 
 $Window.Add_Closing({
     param($s, $e)
+    if ($script:ActiveToolOperations.Count -gt 0) {
+        $runningLabels = ($script:ActiveToolOperations.Values | ForEach-Object { $_.Label }) -join ", "
+        $r = [System.Windows.MessageBox]::Show(
+            "A tool operation is still running:`n`n$runningLabels`n`nCancel it and close CrazyAlexTool?",
+            "Tool in progress",
+            [System.Windows.MessageBoxButton]::YesNo,
+            [System.Windows.MessageBoxImage]::Warning)
+        if ($r -ne [System.Windows.MessageBoxResult]::Yes) { $e.Cancel = $true; return }
+        foreach ($op in @($script:ActiveToolOperations.Values)) {
+            $op.CancelRequested = $true
+            try { if ($op.Request) { $op.Request.Abort() } } catch { }
+            try { if ($op.Process) { Stop-ToolProcessTree -Process $op.Process } } catch { }
+        }
+    }
     if ($script:ActiveJobs.Count -gt 0) {
         $rn = ($script:ActiveJobs.Values | ForEach-Object { $_.Name }) -join ", "
         $r = [System.Windows.MessageBox]::Show(
