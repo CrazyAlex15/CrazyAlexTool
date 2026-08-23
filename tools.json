@@ -73,7 +73,7 @@
       "label": "Activate WinRAR",
       "type": "builtin",
       "action": "Activate-WinRAR",
-      "category": "office_windows",
+      "category": "scripts",
       "width": 205,
       "tag": "winrar activate license key",
       "platform": "windows"
