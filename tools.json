@@ -1,92 +1,101 @@
 {
-    "version": 5,
-    "tools": [
-        {
-            "id": "officeODT",
-            "label": "Install Office (ODT)",
-            "type": "builtin",
-            "action": "Install-OfficeODT",
-            "category": "office",
-            "width": 205,
-            "tag": "office setup installer microsoft odt"
-        },
-        {
-            "id": "o365ProPlusRetail64",
-            "label": "365ProPlusRetail64",
-            "type": "single-file",
-            "url": "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365ProPlusRetail&platform=x64&language=en-us&version=O16GA",
-            "extension": ".exe",
-            "category": "office",
-            "width": 205,
-            "tag": "office 365 pro plus retail x64 en-us"
-        },
-        {
-            "id": "proPlus2024Retail64",
-            "label": "ProPlus2024Retail64",
-            "type": "single-file",
-            "url": "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=ProPlus2024Retail&platform=x64&language=en-us&version=O16GA",
-            "extension": ".exe",
-            "category": "office",
-            "width": 205,
-            "tag": "office 2024 pro plus retail x64 en-us"
-        },
-        {
-            "id": "officeMacOS",
-            "label": "Office macOS",
-            "type": "single-file",
-            "url": "https://go.microsoft.com/fwlink/p/?linkid=2009112",
-            "extension": ".pkg",
-            "category": "office",
-            "width": 205,
-            "tag": "office macos mac microsoft installer pkg"
-        },
-        {
-            "id": "scrubber",
-            "label": "Office Scrubber",
-            "type": "builtin",
-            "action": "Invoke-OfficeScrubber",
-            "category": "office",
-            "width": 205,
-            "tag": "office scrubber cleanup remove"
-        },
-        {
-            "id": "winTools",
-            "label": "Win Office Tools",
-            "type": "single-file",
-            "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat",
-            "extension": ".bat",
-            "category": "office",
-            "width": 205,
-            "tag": "office windows tools"
-        },
-        {
-            "id": "winrar",
-            "label": "Activate WinRAR",
-            "type": "builtin",
-            "action": "Activate-WinRAR",
-            "category": "office",
-            "width": 205,
-            "tag": "winrar activate license key"
-        },
-        {
-            "id": "genp",
-            "label": "GenP Activator",
-            "type": "builtin",
-            "action": "Invoke-GenP",
-            "category": "scripts",
-            "width": 205,
-            "tag": "genp activator adobe"
-        },
-        {
-            "id": "update",
-            "label": "System Update",
-            "type": "single-file",
-            "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat",
-            "extension": ".bat",
-            "category": "scripts",
-            "width": 205,
-            "tag": "system update windows update"
-        }
-    ]
+  "version": 6,
+  "tools": [
+    {
+      "id": "officeODT",
+      "label": "Install Office (ODT)",
+      "type": "builtin",
+      "action": "Install-OfficeODT",
+      "category": "office",
+      "width": 205,
+      "tag": "office setup installer microsoft odt"
+    },
+    {
+      "id": "o365ProPlusRetail64",
+      "label": "365ProPlusRetail64",
+      "type": "single-file",
+      "url": "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365ProPlusRetail&platform=x64&language=en-us&version=O16GA",
+      "extension": ".exe",
+      "category": "office",
+      "width": 205,
+      "tag": "office 365 pro plus retail x64 en-us"
+    },
+    {
+      "id": "proPlus2024Retail64",
+      "label": "ProPlus2024Retail64",
+      "type": "single-file",
+      "url": "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=ProPlus2024Retail&platform=x64&language=en-us&version=O16GA",
+      "extension": ".exe",
+      "category": "office",
+      "width": 205,
+      "tag": "office 2024 pro plus retail x64 en-us"
+    },
+    {
+      "id": "officeMacOS",
+      "label": "Office macOS",
+      "type": "single-file",
+      "url": "https://go.microsoft.com/fwlink/p/?linkid=2009112",
+      "extension": ".pkg",
+      "category": "office",
+      "width": 205,
+      "tag": "office macos mac microsoft installer pkg"
+    },
+    {
+      "id": "officeResetMacOS",
+      "label": "Office-Reset tool 2.0 Beta 1 (macOS)",
+      "type": "single-file",
+      "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_Reset_2.0.0.pkg",
+      "extension": ".pkg",
+      "category": "office",
+      "width": 205,
+      "tag": "office reset tool 2.0 beta 1 macos mac pkg"
+    },
+    {
+      "id": "scrubber",
+      "label": "Office Scrubber",
+      "type": "builtin",
+      "action": "Invoke-OfficeScrubber",
+      "category": "office",
+      "width": 205,
+      "tag": "office scrubber cleanup remove"
+    },
+    {
+      "id": "winTools",
+      "label": "Win Office Tools",
+      "type": "single-file",
+      "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/WinOfficeTools.bat",
+      "extension": ".bat",
+      "category": "office",
+      "width": 205,
+      "tag": "office windows tools"
+    },
+    {
+      "id": "winrar",
+      "label": "Activate WinRAR",
+      "type": "builtin",
+      "action": "Activate-WinRAR",
+      "category": "office",
+      "width": 205,
+      "tag": "winrar activate license key"
+    },
+    {
+      "id": "genp",
+      "label": "GenP Activator",
+      "type": "builtin",
+      "action": "Invoke-GenP",
+      "category": "scripts",
+      "width": 205,
+      "tag": "genp activator adobe"
+    },
+    {
+      "id": "update",
+      "label": "System Update",
+      "type": "single-file",
+      "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/UpdateSystemWithPSCheck.bat",
+      "extension": ".bat",
+      "category": "scripts",
+      "width": 205,
+      "tag": "system update windows update"
+    }
+  ]
 }
-
