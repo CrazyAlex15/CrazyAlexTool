@@ -15,7 +15,7 @@
 # VERSION MARKER
 # ============================================================
 
-$script:AppVersion = "1.7.1"
+$script:AppVersion = "1.7.2"
 # Keep this source ASCII-safe and save with a UTF-8 BOM for Windows PowerShell 5.1.
 Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
 
@@ -65,6 +65,14 @@ function Start-CrazyAlexToolMacOS {
     $cachePath = Join-Path $appData 'tools.json'
     $downloadFolder = Join-Path $HOME 'Downloads/CrazyAlexTool'
     $localToolsPath = $null
+
+    # The macOS download folder is tool-owned temporary storage.
+    # Clear leftovers from an interrupted previous run before starting.
+    try {
+        if (Test-Path -LiteralPath $downloadFolder) {
+            Remove-Item -LiteralPath $downloadFolder -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } catch { }
     if (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
         try { $localToolsPath = Join-Path (Split-Path -Parent $PSCommandPath) 'tools.json' } catch { }
     }
@@ -338,6 +346,14 @@ async function quitTool(){try{await fetch('/quit');}catch(e){} window.close();do
             try { Stop-Job $refreshJob -ErrorAction SilentlyContinue } catch { }
             try { Remove-Job $refreshJob -Force -ErrorAction SilentlyContinue } catch { }
         }
+
+        # Remove every macOS package/file downloaded by this tool when it closes.
+        # This folder is dedicated to CrazyAlexTool, so deleting it is safe.
+        try {
+            if (Test-Path -LiteralPath $downloadFolder) {
+                Remove-Item -LiteralPath $downloadFolder -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        } catch { }
     }
 }
 
@@ -361,7 +377,7 @@ $leftoverVarNames = @(
     "DefaultSettings", "Settings", "InfoTimer",
     "SearchableControls", "PickerResult", "LabelPickerResult",
     "RemoteScriptUrl", "ToolsJsonUrl", "ToolsCachePath", "LocalToolsJsonPath", "UseLocalToolsJson",
-    "CatalogRefreshJob", "CatalogRefreshTimer", "StartupTimer", "StartupComplete",
+    "CatalogRefreshJob", "CatalogRefreshTimer", "StartupTimer", "StartupComplete", "SessionDownloadFiles",
     "Window", "Reader", "XAML",
     "TitleText", "SubtitleText", "TxtSearch", "MainTabs",
     "SystemInfoText", "StatusText", "ProgressText", "MainProgress",
@@ -510,6 +526,7 @@ $script:DefaultSettings = [ordered]@{
 $script:Settings = [ordered]@{}
 $script:ActiveJobs = @{}
 $script:ToolCatalog = @()
+$script:SessionDownloadFiles = New-Object System.Collections.Generic.List[string]
 
 # ============================================================
 # LOGGING & SETTINGS
@@ -522,6 +539,48 @@ function Initialize-AppData {
     if (-not (Test-Path $script:TemporaryPath)) {
         New-Item -Path $script:TemporaryPath -ItemType Directory -Force | Out-Null
     }
+}
+
+function Register-SessionDownload {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return }
+    try {
+        if (-not $script:SessionDownloadFiles.Contains($Path)) {
+            [void]$script:SessionDownloadFiles.Add($Path)
+        }
+    } catch { }
+}
+
+function Clear-CrazyAlexTemporaryData {
+    # Always remove the private internal TEMP workspace.
+    try {
+        if (Test-Path -LiteralPath $script:TemporaryPath) {
+            Remove-Item -LiteralPath $script:TemporaryPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } catch { }
+
+    # Remove files the tool explicitly downloaded into a user-selected folder.
+    # We intentionally do NOT wipe an arbitrary custom folder.
+    foreach ($downloadedPath in @($script:SessionDownloadFiles)) {
+        try {
+            if (Test-Path -LiteralPath $downloadedPath) {
+                Remove-Item -LiteralPath $downloadedPath -Force -ErrorAction SilentlyContinue
+            }
+        } catch { }
+    }
+
+    # The default CrazyAlexTool download folder is dedicated temporary storage,
+    # so it can be removed completely when the tool closes.
+    try {
+        $configuredFolder = [string]$script:Settings.DownloadFolder
+        if ([string]::IsNullOrWhiteSpace($configuredFolder)) { $configuredFolder = $script:DefaultDownloadFolder }
+
+        $configuredFull = [IO.Path]::GetFullPath($configuredFolder).TrimEnd('\')
+        $defaultFull = [IO.Path]::GetFullPath($script:DefaultDownloadFolder).TrimEnd('\')
+        if ($configuredFull -ieq $defaultFull -and (Test-Path -LiteralPath $script:DefaultDownloadFolder)) {
+            Remove-Item -LiteralPath $script:DefaultDownloadFolder -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } catch { }
 }
 
 function Write-Log {
@@ -1032,7 +1091,7 @@ Load-ToolCatalog
                     </Grid.RowDefinitions>
                     <TextBlock Name="HdrSettings" Text="SETTINGS"
                                Foreground="#00FFFF" FontSize="17" FontWeight="Bold" Margin="0,0,0,18"/>
-                    <TextBlock Grid.Row="1" Text="Temporary download folder"
+                    <TextBlock Grid.Row="1" Text="Temporary download folder (cleared when tool closes)"
                                Foreground="#FFFFFF" Margin="0,0,0,7"/>
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
@@ -1338,6 +1397,7 @@ function Invoke-SingleFileTool {
             Write-Log "Downloading macOS package: $Name"
             Set-Status "Downloading $Name..." "#FFFF00"
             Invoke-TrackedDownload -Url $Url -OutputFile $filePath
+            Register-SessionDownload -Path $filePath
             Set-Status "$Name downloaded." "#00FF00"
             Show-Toast "Download finished" "$Name was saved to $filePath"
             Start-Process -FilePath "explorer.exe" -ArgumentList "/select,`"$filePath`"" -ErrorAction SilentlyContinue | Out-Null
@@ -2239,8 +2299,8 @@ $Window.Add_Closing({
         Save-AppSettings
     } catch { }
     try { if ($script:ToastNotifier) { $script:ToastNotifier.Visible = $false; $script:ToastNotifier.Dispose() } } catch { }
-    try { Remove-Item -Path $script:TemporaryPath -Recurse -Force -ErrorAction SilentlyContinue } catch { }
-    Write-Log "CrazyAlexTool closed"
+    Clear-CrazyAlexTemporaryData
+    Write-Log "CrazyAlexTool closed; temporary downloads cleaned"
 })
 
 $Window.Add_Closed({
