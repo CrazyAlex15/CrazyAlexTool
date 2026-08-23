@@ -1,6 +1,4 @@
-import json
-
-data = {
+{
     "version": 5,
     "tools": [
         {
@@ -92,8 +90,3 @@ data = {
     ]
 }
 
-path = "/mnt/data/tools-with-office-macos.json"
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2)
-
-print(path)
