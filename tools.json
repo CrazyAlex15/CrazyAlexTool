@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "categories": [
     {
       "id": "office_windows",
@@ -22,7 +22,8 @@
       "action": "Install-OfficeODT",
       "category": "office_windows",
       "width": 205,
-      "tag": "office setup installer microsoft odt"
+      "tag": "office setup installer microsoft odt",
+      "platform": "windows"
     },
     {
       "id": "o365ProPlusRetail64",
@@ -32,7 +33,8 @@
       "extension": ".exe",
       "category": "office_windows",
       "width": 205,
-      "tag": "office 365 pro plus retail x64 en-us"
+      "tag": "office 365 pro plus retail x64 en-us",
+      "platform": "windows"
     },
     {
       "id": "proPlus2024Retail64",
@@ -42,7 +44,8 @@
       "extension": ".exe",
       "category": "office_windows",
       "width": 205,
-      "tag": "office 2024 pro plus retail x64 en-us"
+      "tag": "office 2024 pro plus retail x64 en-us",
+      "platform": "windows"
     },
     {
       "id": "scrubber",
@@ -51,7 +54,8 @@
       "action": "Invoke-OfficeScrubber",
       "category": "office_windows",
       "width": 205,
-      "tag": "office scrubber cleanup remove"
+      "tag": "office scrubber cleanup remove",
+      "platform": "windows"
     },
     {
       "id": "winTools",
@@ -61,7 +65,8 @@
       "extension": ".bat",
       "category": "office_windows",
       "width": 205,
-      "tag": "office windows tools"
+      "tag": "office windows tools",
+      "platform": "windows"
     },
     {
       "id": "winrar",
@@ -70,7 +75,8 @@
       "action": "Activate-WinRAR",
       "category": "office_windows",
       "width": 205,
-      "tag": "winrar activate license key"
+      "tag": "winrar activate license key",
+      "platform": "windows"
     },
     {
       "id": "officeMacOS",
@@ -80,7 +86,8 @@
       "extension": ".pkg",
       "category": "office_macos",
       "width": 205,
-      "tag": "office macos mac microsoft installer pkg"
+      "tag": "office macos mac microsoft installer pkg",
+      "platform": "macos"
     },
     {
       "id": "officeResetMacOS",
@@ -90,7 +97,8 @@
       "extension": ".pkg",
       "category": "office_macos",
       "width": 205,
-      "tag": "office reset tool 2.0 beta 1 macos mac pkg"
+      "tag": "office reset tool 2.0 beta 1 macos mac pkg",
+      "platform": "macos"
     },
     {
       "id": "officeSerializerMacOS",
@@ -100,7 +108,8 @@
       "extension": ".pkg",
       "category": "office_macos",
       "width": 205,
-      "tag": "office ltsc 2024 vl serializer macos mac pkg"
+      "tag": "office ltsc 2024 vl serializer macos mac pkg",
+      "platform": "macos"
     },
     {
       "id": "genp",
@@ -109,7 +118,8 @@
       "action": "Invoke-GenP",
       "category": "scripts",
       "width": 205,
-      "tag": "genp activator adobe"
+      "tag": "genp activator adobe",
+      "platform": "windows"
     },
     {
       "id": "update",
@@ -119,7 +129,8 @@
       "extension": ".bat",
       "category": "scripts",
       "width": 205,
-      "tag": "system update windows update"
+      "tag": "system update windows update",
+      "platform": "windows"
     }
   ]
 }
