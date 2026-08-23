@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "tools": [
     {
       "id": "officeODT",
@@ -49,6 +49,16 @@
       "category": "office",
       "width": 205,
       "tag": "office reset tool 2.0 beta 1 macos mac pkg"
+    },
+    {
+      "id": "officeSerializerMacOS",
+      "label": "Activator (Serializer macOS)",
+      "type": "single-file",
+      "url": "https://raw.githubusercontent.com/CrazyAlex15/CrazyAlexTool/main/Microsoft_Office_LTSC_2024_VL_Serializer.pkg",
+      "extension": ".pkg",
+      "category": "office",
+      "width": 205,
+      "tag": "office ltsc 2024 vl serializer activator macos mac pkg"
     },
     {
       "id": "scrubber",
