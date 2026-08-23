@@ -16,7 +16,7 @@
   ],
   "tools": [
     {
-      "id": "officeODT",
+      "id": "office",
       "label": "Install Office",
       "type": "builtin",
       "action": "Install-OfficeODT",
