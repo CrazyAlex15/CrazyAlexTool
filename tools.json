@@ -17,7 +17,7 @@
   "tools": [
     {
       "id": "officeODT",
-      "label": "Install Office (ODT)",
+      "label": "Install Office",
       "type": "builtin",
       "action": "Install-OfficeODT",
       "category": "office_windows",
