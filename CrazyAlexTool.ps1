@@ -15,7 +15,7 @@
 # VERSION MARKER
 # ============================================================
 
-$script:AppVersion = "1.8.1"
+$script:AppVersion = "1.8.3"
 # Keep this source ASCII-safe and save with a UTF-8 BOM for Windows PowerShell 5.1.
 Write-Host "[i] Loading CrazyAlexTool $script:AppVersion" -ForegroundColor Cyan
 
@@ -523,7 +523,8 @@ if ((-not (Test-IsAdministrator)) -or $isRemoteExecution -or $isPowerShell7) {
         if ([string]::IsNullOrWhiteSpace($scriptPath) -or -not (Test-Path -LiteralPath $scriptPath)) {
             $scriptPath = Join-Path $env:TEMP ("CrazyAlexTool-" + [Guid]::NewGuid().ToString("N") + ".ps1")
 
-            $remoteResponse = Invoke-WebRequest -Uri $script:RemoteScriptUrl -UseBasicParsing -ErrorAction Stop
+            $remoteScriptUri = $script:RemoteScriptUrl + "?x=" + [Guid]::NewGuid().ToString("N")
+            $remoteResponse = Invoke-WebRequest -Uri $remoteScriptUri -UseBasicParsing -ErrorAction Stop
             $remoteCode = [string]$remoteResponse.Content
             if ([string]::IsNullOrWhiteSpace($remoteCode)) { throw "Remote script was empty." }
 
@@ -2480,8 +2481,11 @@ function Build-ToolPanels {
         $btn.Width = [double]($tool.width)
         $btn.Height = 66
         $btn.Style = $Window.FindResource("ToolButton")
+        # Keep search keywords in Tag, and store the exact JSON tool ID separately.
+        # WPF Name values have identifier restrictions (for example dots are invalid),
+        # so tool IDs must never be encoded into Button.Name.
         $btn.Tag = $tool.tag
-        $btn.Name = "BtnTool_$($tool.id)"
+        $btn.DataContext = [string]$tool.id
 
         $content = New-Object System.Windows.Controls.Grid
         $content.Width = [Math]::Max(120, [double]$tool.width - 30)
@@ -2523,8 +2527,9 @@ function Build-ToolPanels {
 
         $btn.Add_Click({
             param($sender, $args)
-            $id = $sender.Name.Substring(8)
-            $t = $script:ToolCatalog | Where-Object { $_.id -eq $id } | Select-Object -First 1
+            $id = [string]$sender.DataContext
+            if ([string]::IsNullOrWhiteSpace($id)) { return }
+            $t = $script:ToolCatalog | Where-Object { [string]$_.id -eq $id } | Select-Object -First 1
             if (-not $t) { return }
 
             # Clicking the same active button acts as Cancel. This works during
