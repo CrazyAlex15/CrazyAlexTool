@@ -122,14 +122,14 @@
       "platform": "windows"
     },
     {
-      "id": "GenPv4.3.1",
-      "label": "GenPv4.3.1",
+      "id": "GenPv4-3-1",
+      "label": "GenPv4-3-1",
       "type": "builtin",
       "url": "https://github.com/CrazyAlex15/CrazyAlexTool/raw/refs/heads/main/GenP-v4.2.1.zip",
       "extension": ".zip",
       "category": "office_macos",
       "width": 205,
-      "tag": "GenPv4.3.1",
+      "tag": "GenPv4-3-1",
       "platform": "windows"
     },
     {
