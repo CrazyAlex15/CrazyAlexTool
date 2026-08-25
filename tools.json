@@ -126,10 +126,10 @@
       "label": "GenP v4.2.1",
       "type": "single-file",
       "url": "https://github.com/CrazyAlex15/CrazyAlexTool/releases/download/v4.2.1/GenPv4.2.1.exe",
-      "extension": ".zip",
+      "extension": ".exe",
       "category": "scripts",
       "width": 205,
-      "tag": "GenP v4.2.1 zip",
+      "tag": "GenP v4.2.1",
       "platform": "windows"
     },
     {
