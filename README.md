@@ -1,82 +1,48 @@
-# CrazyAlexTool
+<div align="center">
 
-**Current app version:** `1.8.3`  
-**Current catalog version:** `9`
+# ⚡ CrazyAlexTool
 
-CrazyAlexTool is a PowerShell-based maintenance and utility launcher for Windows and macOS. On Windows it uses a WPF desktop interface; on macOS it opens a local browser interface and exposes the macOS-compatible catalog entries.
+### A modern PowerShell toolbox for Windows and macOS
 
-## Platform compatibility
+<p>
+  <img src="https://img.shields.io/badge/App-1.8.3-00C2FF?style=for-the-badge" alt="CrazyAlexTool version 1.8.3">
+  <img src="https://img.shields.io/badge/Catalog-v9-8B5CF6?style=for-the-badge" alt="Catalog version 9">
+  <img src="https://img.shields.io/badge/Tools-12-22C55E?style=for-the-badge" alt="12 catalog tools">
+</p>
 
-| Platform | Requirement | Interface | Notes |
-|---|---|---|---|
-| Windows 10/11 | Windows PowerShell 5.1 | WPF desktop application | Administrator access is requested automatically when required. |
-| macOS | PowerShell 7 or newer (`pwsh`) | Local browser interface | The terminal must remain open while the tool is running. |
+<p>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows11&logoColor=white" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/macOS-PowerShell%207-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS with PowerShell 7">
+  <img src="https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?style=flat-square&logo=powershell&logoColor=white" alt="PowerShell 5.1 or newer">
+</p>
 
-Windows PowerShell 7 is detected automatically and the application relaunches itself in Windows PowerShell 5.1 for full WPF compatibility.
+One launcher for Office utilities, maintenance scripts, downloads, diagnostics and system tools—with a native WPF interface on Windows and a local browser interface on macOS.
 
-## Main features
+[Quick start](#-quick-start) · [Features](#-highlights) · [Tool catalog](#-tool-catalog) · [Troubleshooting](#-troubleshooting)
 
-- Dynamic tool categories loaded from `tools.json`
-- Local catalog override for testing and development
-- Cached catalog with background GitHub refresh
-- Platform-aware Windows and macOS tool filtering
-- Tool search
-- Per-tool status, progress and cancellation
-- Configurable download folder
-- Automatic system-information refresh
-- SFC system-file scan
-- Network reset
-- Saved Wi-Fi profile and password export
-- Windows product-key lookup
-- Confirmation prompts for important actions
-- Optional desktop notifications and logging
-- Configurable accent colour
-- In-app update and restart
+<sub>Built and maintained by <a href="https://github.com/CrazyAlex15">CrazyAlex15</a></sub>
 
-## Current tool catalog
+</div>
 
-The catalog is divided into three categories.
+---
 
-### OFFICE WINDOWS
+> [!IMPORTANT]
+> CrazyAlexTool can download and execute external scripts, installers and packages, sometimes with administrator privileges. Review the sources and use only software for which you have the required licence or organisational entitlement.
 
-| Tool | Purpose |
-|---|---|
-| Install Office | Downloads the Microsoft Office Deployment Tool and starts an Office installation. |
-| 365ProPlusRetail64 | Downloads the Microsoft 365 Apps for enterprise 64-bit installer. |
-| ProPlus2024Retail64 | Downloads the Office Professional Plus 2024 Retail 64-bit installer. |
-| Office Scrubber | Provides Office cleanup, removal and licence-state reset options. |
-| Win Office Tools | Downloads and runs the configured Windows Office tools script. |
+## 🚀 Quick start
 
-### OFFICE macOS
+### Windows
 
-| Tool | Purpose |
-|---|---|
-| Office macOS | Downloads the Microsoft Office installer for macOS. |
-| Office-Reset tool 2.0 Beta1 | Downloads the configured Office Reset package. |
-| Activator (Serializer) | Downloads the configured Office LTSC 2024 volume-licence serializer package. A valid organisational entitlement is required. |
-
-### SCRIPTS
-
-| Tool | Purpose |
-|---|---|
-| Activate WinRAR | Applies the configured WinRAR registration file to an installed WinRAR copy. |
-| GenP Activator | Downloads the configured GenP archive and presents the available executable versions. |
-| GenP v4.2.1 | Downloads and runs the configured v4.2.1 executable. |
-| System Update | Starts the configured Windows update script. |
-
-Windows-only tools remain visible but disabled in the macOS interface. On Windows, macOS `.pkg` files are downloaded to the configured download folder instead of being executed.
-
-## Run on Windows
-
-### Quick launch
-
-The following command matches the current launcher and the in-app update action:
+Open **Windows PowerShell** and run:
 
 ```powershell
 irm "https://crazyalex15.github.io/win?x=$(Get-Random)" | iex
 ```
 
-### Review the script before running
+The tool automatically requests administrator access and relaunches in **Windows PowerShell 5.1** when required for full WPF compatibility.
+
+<details>
+<summary><strong>🔍 Review the script before running</strong></summary>
 
 ```powershell
 $path = Join-Path $env:TEMP "CrazyAlexTool.ps1"
@@ -86,61 +52,128 @@ Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $path
 notepad.exe $path
 ```
 
-After reviewing the downloaded file, run:
+After reviewing the file:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path
 ```
 
-The application will request administrator access and relaunch itself when necessary.
+</details>
 
-## Run on macOS
+### macOS
 
-1. Install PowerShell 7 or newer.
-2. Open Terminal.
-3. Start PowerShell:
+CrazyAlexTool requires **PowerShell 7 or newer** on macOS.
 
 ```bash
 pwsh
 ```
 
-4. Run the launcher from the PowerShell prompt:
+Then run this from the PowerShell prompt:
 
 ```powershell
 irm "https://crazyalex15.github.io/win?x=$(Get-Random)" | iex
 ```
 
-CrazyAlexTool starts a local-only HTTP listener on a random `127.0.0.1` port and opens the interface in the default browser. Keep the PowerShell terminal open until you have finished.
+The tool starts a local-only server on a random `127.0.0.1` port and opens its interface in your default browser. Keep the terminal open until you finish.
 
-macOS packages are downloaded to:
+---
 
-```text
-~/Downloads/CrazyAlexTool
+## ✨ Highlights
+
+| | Capability | What it does |
+|---|---|---|
+| 🧩 | **Dynamic catalog** | Loads categories and tools from [`tools.json`](tools.json). |
+| ⚡ | **Fast startup** | Opens from a local cache or built-in fallback while GitHub refreshes in the background. |
+| 🔎 | **Instant search** | Filters the visible tools by name and search tags. |
+| 📊 | **Live progress** | Shows per-tool state, progress, speed and cancellation controls. |
+| 🖥️ | **Cross-platform UI** | Uses WPF on Windows and a local browser interface on macOS. |
+| 🎨 | **Personal settings** | Supports accent colours, confirmations, auto-refresh, notifications and logging. |
+| 🧹 | **Automatic cleanup** | Removes tool-managed temporary and session download files. |
+| 🔄 | **Cloud updates** | Refreshes the catalog independently and can restart from the latest launcher. |
+
+### Built-in Windows utilities
+
+- System-information dashboard with optional automatic refresh
+- SFC system-file scan
+- Network reset
+- Saved Wi-Fi profile and password export
+- Windows product-key lookup
+- Configurable download directory
+- Tool activity log and desktop notifications
+
+---
+
+## 🧰 Tool catalog
+
+CrazyAlexTool `1.8.3` currently uses catalog `v9` with **12 tools** across three dynamic categories.
+
+### 🪟 OFFICE WINDOWS
+
+| Tool | Type | Purpose |
+|---|:---:|---|
+| **Install Office** | Built-in | Downloads the Microsoft Office Deployment Tool and starts Office setup. |
+| **365ProPlusRetail64** | Download | Microsoft 365 Apps for enterprise, 64-bit. |
+| **ProPlus2024Retail64** | Download | Office Professional Plus 2024 Retail, 64-bit. |
+| **Office Scrubber** | Built-in | Office cleanup, removal and licence-state reset options. |
+| **Win Office Tools** | Script | Downloads and starts the configured Windows Office tools script. |
+
+### 🍎 OFFICE macOS
+
+| Tool | Type | Purpose |
+|---|:---:|---|
+| **Office macOS** | Package | Downloads the Microsoft Office installer for macOS. |
+| **Office-Reset tool 2.0 Beta1** | Package | Downloads the configured Office Reset package. |
+| **Activator (Serializer)** | Package | Downloads the configured Office LTSC 2024 volume-licence serializer. A valid organisational entitlement is required. |
+
+### 📜 SCRIPTS
+
+| Tool | Type | Purpose |
+|---|:---:|---|
+| **Activate WinRAR** | Built-in | Applies the configured registration file to an installed WinRAR copy. |
+| **GenP Activator** | Built-in | Downloads the configured archive and presents its available executable versions. |
+| **GenP v4.2.1** | Download | Downloads and starts the configured v4.2.1 executable. |
+| **System Update** | Script | Starts the configured Windows update script. |
+
+> [!NOTE]
+> Windows-only tools remain visible but disabled in macOS mode. When a macOS `.pkg` is selected from Windows, it is downloaded to the configured folder instead of being executed.
+
+---
+
+## 🧠 How the catalog works
+
+```mermaid
+flowchart TD
+    A[Start CrazyAlexTool] --> B{Local tools.json?}
+    B -->|Yes| C[Use development override]
+    B -->|No| D{Valid cache?}
+    D -->|Yes| E[Open cached catalog]
+    D -->|No| F[Open built-in fallback]
+    E --> G[Refresh from GitHub]
+    F --> G
+    G --> H[Update cache and live interface]
 ```
 
-The selected package is opened with the macOS Installer after the download completes.
+The production catalog is [`tools.json`](tools.json). Loading follows this order:
 
-## Catalog behaviour
-
-The production catalog is stored in [`tools.json`](tools.json).
-
-Catalog loading follows this order:
-
-1. A valid `tools.json` beside `CrazyAlexTool.ps1` is used as a local development override.
-2. Otherwise, the last valid cached catalog is loaded immediately.
+1. A valid `tools.json` beside `CrazyAlexTool.ps1` becomes the local development override.
+2. Otherwise, the last valid cached catalog loads immediately.
 3. If no valid cache exists, the built-in fallback catalog is displayed.
-4. The GitHub catalog refreshes in the background after the interface opens.
+4. The latest GitHub catalog refreshes in the background after the interface opens.
 
-To test catalog changes locally, place these files in the same folder:
+### Local catalog testing
+
+Place both files in the same folder:
 
 ```text
 CrazyAlexTool.ps1
 tools.json
 ```
 
-The local file is not overwritten by the background GitHub refresh during that run.
+During that run, the local catalog is used directly and is not overwritten by the background refresh.
 
-## Application data
+---
+
+## 💾 Application data
 
 ### Windows
 
@@ -150,9 +183,7 @@ The local file is not overwritten by the background GitHub refresh during that r
 | Log | `%APPDATA%\CrazyAlexTool\log.txt` |
 | Catalog cache | `%APPDATA%\CrazyAlexTool\tools.json` |
 | Temporary files | `%TEMP%\CrazyAlexTool` |
-| Default downloads | `%USERPROFILE%\Downloads\CrazyAlexTool` |
-
-Temporary and session-tracked files are cleaned up when the application closes.
+| Downloads | `%USERPROFILE%\Downloads\CrazyAlexTool` |
 
 ### macOS
 
@@ -161,43 +192,62 @@ Temporary and session-tracked files are cleaned up when the application closes.
 | Catalog cache | `~/Library/Application Support/CrazyAlexTool/tools.json` |
 | Package downloads | `~/Downloads/CrazyAlexTool` |
 
-The macOS download folder is tool-managed and old interrupted-download leftovers are cleared when a new session starts.
+The macOS download folder is tool-managed. Leftovers from interrupted downloads are cleared when a new session starts, and completed packages open with the macOS Installer.
 
-## Troubleshooting
+---
 
-### The Windows interface does not open
+## 🛠️ Troubleshooting
 
-- Confirm that you are running Windows 10 or Windows 11.
-- Confirm that Windows PowerShell 5.1 is installed at its standard system location.
-- If you started the script from PowerShell 7, wait for the automatic Windows PowerShell 5.1 relaunch.
+<details>
+<summary><strong>The Windows interface does not open</strong></summary>
+
+- Confirm that the computer runs Windows 10 or Windows 11.
+- Confirm that Windows PowerShell 5.1 exists in its standard system location.
+- If you launched from PowerShell 7, allow the automatic PowerShell 5.1 relaunch.
 - Accept the administrator prompt.
 
-### The macOS interface does not open
+</details>
+
+<details>
+<summary><strong>The macOS interface does not open</strong></summary>
 
 - Run `pwsh --version` and confirm that it reports PowerShell 7 or newer.
-- Keep the terminal open.
-- Check the terminal for the generated local `http://127.0.0.1:<port>/` address and open it manually if the browser does not launch.
+- Keep the terminal open while CrazyAlexTool is running.
+- Look in the terminal for the generated `http://127.0.0.1:<port>/` address and open it manually if the browser does not launch.
 
-### The tool list is outdated
+</details>
 
-- Restart CrazyAlexTool and allow the background catalog refresh to complete.
-- Check whether a local `tools.json` beside the script is overriding the GitHub catalog.
-- If necessary, remove the cached `tools.json` from the application-data location and restart.
+<details>
+<summary><strong>The catalog looks outdated</strong></summary>
 
-### A download or tool fails
+- Restart CrazyAlexTool and allow the background refresh to complete.
+- Check whether a local `tools.json` beside the script is overriding GitHub.
+- Remove the cached `tools.json` from the application-data folder and restart if the cache is invalid.
+
+</details>
+
+<details>
+<summary><strong>A download or tool fails</strong></summary>
 
 - Check the internet connection.
-- Confirm that GitHub and the configured download source are reachable.
-- Review `%APPDATA%\CrazyAlexTool\log.txt` on Windows when logging is enabled.
-- Run only files and scripts that you trust.
+- Confirm that GitHub and the configured source are reachable.
+- Review `%APPDATA%\CrazyAlexTool\log.txt` when Windows logging is enabled.
+- Retry only after confirming that the source and downloaded file are trusted.
 
-## Repository layout
+</details>
+
+---
+
+## 📁 Repository map
+
+<details>
+<summary><strong>View repository files</strong></summary>
 
 | File | Purpose |
 |---|---|
-| `CrazyAlexTool.ps1` | Main cross-platform application and Windows WPF interface |
-| `tools.json` | Remote tool catalog and categories |
-| `OfficeScrubber.zip` | Office Scrubber payload used by the built-in action |
+| [`CrazyAlexTool.ps1`](CrazyAlexTool.ps1) | Main cross-platform application and Windows WPF interface |
+| [`tools.json`](tools.json) | Dynamic tool catalog and categories |
+| `OfficeScrubber.zip` | Payload used by the built-in Office Scrubber action |
 | `WinOfficeTools.bat` | Windows Office tools launcher |
 | `UpdateSystemWithPSCheck.bat` | Windows system-update launcher |
 | `Microsoft_Office_Reset_2.0.0.pkg` | Office Reset package for macOS |
@@ -205,12 +255,34 @@ The macOS download folder is tool-managed and old interrupted-download leftovers
 | `GenP-main.zip` | Archive used by the built-in GenP action |
 | `rarreg.key` | Registration file used by the WinRAR action |
 
-## Security and licensing
+</details>
 
-CrazyAlexTool can download and execute external scripts, installers and packages, sometimes with administrator privileges. Review the source, verify downloaded files and use only software for which you have the necessary licences or organisational entitlement.
+---
 
-The repository owner is not responsible for damage, data loss, licensing violations or other consequences resulting from third-party tools or modified catalog entries.
+## 🔄 Updating
 
-## Updating
+Open **Settings → Update Tool** to close the current session and restart from the latest launcher.
 
-Use **Settings → Update Tool** inside CrazyAlexTool to close the current session and restart from the latest launcher. The tool catalog can update independently through `tools.json`, so new catalog entries do not always require a new application version.
+The application and catalog update independently:
+
+- Changes to `CrazyAlexTool.ps1` update the interface and built-in functionality.
+- Changes to `tools.json` can add, remove or reorganise catalog entries without releasing a new application version.
+
+---
+
+## 🛡️ Security and responsibility
+
+> [!CAUTION]
+> CrazyAlexTool may execute downloaded content with elevated privileges. Inspect external sources, validate files where possible, keep backups of important data and never disable security protections simply to force a download or script to run.
+
+Third-party names, packages and trademarks belong to their respective owners. The repository owner is not responsible for damage, data loss, licensing violations or other consequences caused by third-party tools or modified catalog entries.
+
+<div align="center">
+
+Made with PowerShell ⚡ by <a href="https://github.com/CrazyAlex15">CrazyAlex15</a>
+
+<br>
+
+<a href="#-crazyalextool">Back to top ↑</a>
+
+</div>
