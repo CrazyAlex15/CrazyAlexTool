@@ -1,0 +1,141 @@
+name: macOS Tahoe Smoke Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Test CrazyAlexTool on macOS Tahoe
+    runs-on: macos-26
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show macOS test environment
+        shell: bash
+        run: |
+          echo "=== macOS ==="
+          sw_vers
+          echo
+          echo "=== Architecture ==="
+          uname -m
+          echo
+          echo "=== PowerShell ==="
+          pwsh --version
+
+      - name: Validate tools.json
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $catalog = Get-Content -LiteralPath './tools.json' -Raw | ConvertFrom-Json
+
+          if (@($catalog.categories).Count -eq 0) {
+              throw 'tools.json has no categories.'
+          }
+
+          if (@($catalog.tools).Count -eq 0) {
+              throw 'tools.json has no tools.'
+          }
+
+          $macTools = @($catalog.tools | Where-Object {
+              ([string]$_.platform).ToLowerInvariant() -in @('macos', 'all')
+          })
+
+          Write-Host "Categories: $(@($catalog.categories).Count)"
+          Write-Host "Tools: $(@($catalog.tools).Count)"
+          Write-Host "macOS/all tools: $($macTools.Count)"
+
+          foreach ($tool in $macTools) {
+              Write-Host " - $($tool.id): $($tool.label)"
+          }
+
+      - name: Start CrazyAlexTool and verify macOS web UI
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LOG="$RUNNER_TEMP/CrazyAlexTool-macos.log"
+          PAGE="$RUNNER_TEMP/CrazyAlexTool.html"
+          URLFILE="$RUNNER_TEMP/CrazyAlexTool-url.txt"
+          PIDFILE="$RUNNER_TEMP/CrazyAlexTool.pid"
+
+          pwsh -NoProfile -File ./CrazyAlexTool.ps1 >"$LOG" 2>&1 &
+          PID=$!
+          echo "$PID" > "$PIDFILE"
+
+          URL=""
+          for i in {1..45}; do
+            URL="$(grep -Eo 'http://127\.0\.0\.1:[0-9]+/' "$LOG" | tail -n 1 || true)"
+            if [ -n "$URL" ]; then
+              break
+            fi
+
+            if ! kill -0 "$PID" 2>/dev/null; then
+              echo "CrazyAlexTool exited before the macOS interface started."
+              cat "$LOG"
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          if [ -z "$URL" ]; then
+            echo "Timed out waiting for the macOS interface URL."
+            cat "$LOG"
+            exit 1
+          fi
+
+          echo "$URL" | tee "$URLFILE"
+          curl --fail --silent --show-error "$URL" -o "$PAGE"
+
+          if ! grep -q 'CrazyAlexTool' "$PAGE"; then
+            echo "The local page responded, but CrazyAlexTool was not found in the HTML."
+            exit 1
+          fi
+
+          echo "CrazyAlexTool macOS web UI is reachable."
+          echo
+          cat "$LOG"
+
+          CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+          if [ -x "$CHROME" ]; then
+            "$CHROME" \
+              --headless \
+              --disable-gpu \
+              --no-sandbox \
+              --hide-scrollbars \
+              --window-size=1440,1000 \
+              --screenshot="$RUNNER_TEMP/CrazyAlexTool.png" \
+              "$URL" || true
+          fi
+
+      - name: Stop CrazyAlexTool
+        if: always()
+        shell: bash
+        run: |
+          PIDFILE="$RUNNER_TEMP/CrazyAlexTool.pid"
+          if [ -f "$PIDFILE" ]; then
+            PID="$(cat "$PIDFILE")"
+            if kill -0 "$PID" 2>/dev/null; then
+              kill "$PID" 2>/dev/null || true
+              sleep 1
+              kill -9 "$PID" 2>/dev/null || true
+            fi
+          fi
+
+      - name: Upload macOS Tahoe test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-tahoe-test-results
+          path: |
+            ${{ runner.temp }}/CrazyAlexTool-macos.log
+            ${{ runner.temp }}/CrazyAlexTool.html
+            ${{ runner.temp }}/CrazyAlexTool.png
+            ${{ runner.temp }}/CrazyAlexTool-url.txt
+          if-no-files-found: warn
